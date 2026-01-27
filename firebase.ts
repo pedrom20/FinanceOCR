@@ -5,12 +5,12 @@ import { getStorage } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-s
 
 // Substituir com os dados reais do seu projeto Firebase Console
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "your-project.firebaseapp.com",
-  projectId: "your-project",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "your-app-id"
+  apiKey: "AIzaSyAEAKYGTf4FmfwZcsReNdr-zJfQBLoGXHg",
+  authDomain: "financeocr-cdd50.firebaseapp.com",
+  projectId: "financeocr-cdd50",
+  storageBucket: "financeocr-cdd50.appspot.com",
+  messagingSenderId: "1030775218749",
+  appId: "1:1030775218749:web:d5ece2d2fe6681c6a54054"
 };
 
 const app = initializeApp(firebaseConfig);
