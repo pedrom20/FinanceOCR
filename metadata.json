@@ -1,0 +1,5 @@
+{
+  "name": "FinOCR Manager",
+  "description": "Personal finance management with Invoice OCR, PHP Backend, and React Frontend.",
+  "requestFramePermissions": []
+}
