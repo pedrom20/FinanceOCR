@@ -1,5 +1,7 @@
 {
-  "name": "FinOCR Manager",
-  "description": "Personal finance management with Invoice OCR, PHP Backend, and React Frontend.",
-  "requestFramePermissions": []
+  "name": "FinOCR Pro",
+  "description": "Gestão financeira com OCR (Node.js) e Cloud (Firebase).",
+  "requestFramePermissions": [
+    "camera"
+  ]
 }

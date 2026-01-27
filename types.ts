@@ -1,43 +1,27 @@
 export interface User {
-  id: number;
+  uid: string;
   name: string;
   email: string;
-}
-
-export interface Store {
-  id: number;
-  name: string;
-  nif: string;
+  createdAt: any;
 }
 
 export interface InvoiceItem {
-  id?: number;
-  product_name: string;
+  productName: string;
   quantity: number;
-  unit_price: number;
-  total_price: number;
+  unitPrice: number;
+  totalPrice: number;
 }
 
 export interface Invoice {
-  id?: number;
-  store_name?: string; // For UI form binding before store_id is resolved
-  store_id?: number;
-  nif?: string; // Extracted NIF
-  invoice_number: string;
-  invoice_date: string;
-  total_amount: number;
-  payment_method: string;
-  items: InvoiceItem[];
-  file_path?: string;
-}
-
-export interface DashboardStats {
-  totalSpentMonth: number;
-  totalSpentYear: number;
-  invoiceCountMonth: number;
-}
-
-export interface ReportData {
-  label: string;
-  value: number;
+  id?: string;
+  userId: string;
+  storeName: string;
+  storeNif: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  totalAmount: number;
+  paymentMethod: string;
+  fileUrl: string;
+  createdAt: any;
+  items?: InvoiceItem[];
 }

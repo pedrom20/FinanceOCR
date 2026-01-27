@@ -1,0 +1,17 @@
+{
+  "name": "finocr-api",
+  "version": "1.0.0",
+  "description": "API para OCR e Relatórios PDF - FinOCR",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "firebase-admin": "^11.11.1",
+    "pdfkit": "^0.13.0",
+    "axios": "^1.6.2",
+    "tesseract.js": "^5.0.3"
+  }
+}
