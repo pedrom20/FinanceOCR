@@ -1,16 +1,17 @@
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-import { getAuth } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
-import { getStorage } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js';
+/// <reference types="vite/client" />
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
-// Substituir com os dados reais do seu projeto Firebase Console
+// As variáveis devem começar com VITE_ para serem expostas ao frontend no build
 const firebaseConfig = {
-  apiKey: "AIzaSyAEAKYGTf4FmfwZcsReNdr-zJfQBLoGXHg",
-  authDomain: "financeocr-cdd50.firebaseapp.com",
-  projectId: "financeocr-cdd50",
-  storageBucket: "financeocr-cdd50.appspot.com",
-  messagingSenderId: "1030775218749",
-  appId: "1:1030775218749:web:d5ece2d2fe6681c6a54054"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);

@@ -1,21 +1,34 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
 const Tesseract = require('tesseract.js');
 const PDFDocument = require('pdfkit');
-const axios = require('axios');
+const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Firebase Admin Setup (Assuming env variables or serviceAccount.json)
-// Em produção, as credenciais devem vir de variáveis de ambiente
+// Firebase Admin Setup seguro via Env Vars
 if (!admin.apps.length) {
-  admin.initializeApp({
-    // credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
-    // databaseURL: process.env.FIREBASE_DATABASE_URL
-  });
+  // Tratamento da Private Key que pode conter quebras de linha
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY 
+    ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') 
+    : undefined;
+
+  if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && privateKey) {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: privateKey,
+      }),
+    });
+    console.log("Firebase Admin inicializado com segurança.");
+  } else {
+    console.warn("AVISO: Credenciais do Firebase Admin não encontradas nas variáveis de ambiente.");
+  }
 }
 
 const db = admin.firestore();
@@ -74,9 +87,7 @@ app.post('/api/ocr/process-invoice', async (req, res) => {
 
   try {
     console.log(`A processar OCR para: ${fileUrl}`);
-    const { data: { text } } = await Tesseract.recognize(fileUrl, 'por', {
-      // logger: m => console.log(m)
-    });
+    const { data: { text } } = await Tesseract.recognize(fileUrl, 'por');
 
     const extractedData = parseInvoiceText(text);
     res.json(extractedData);
@@ -88,7 +99,7 @@ app.post('/api/ocr/process-invoice', async (req, res) => {
 
 // --- ENDPOINT: PDF Report ---
 app.get('/api/reports/pdf', async (req, res) => {
-  const { userId, startDate, endDate } = req.query;
+  const { userId } = req.query;
 
   try {
     const invoicesSnap = await db.collection('invoices')
@@ -132,6 +143,15 @@ app.get('/api/reports/pdf', async (req, res) => {
     console.error('Erro PDF:', error);
     res.status(500).send('Erro ao gerar PDF');
   }
+});
+
+// --- SERVE STATIC FRONTEND (PRODUCTION) ---
+// Serve os ficheiros estáticos do React (dist)
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// Qualquer outra rota não-API retorna o index.html (React Router)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
 const PORT = process.env.PORT || 3000;

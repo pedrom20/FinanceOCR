@@ -1,18 +1,20 @@
+/// <reference types="vite/client" />
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { 
-  LayoutDashboard, UploadCloud, FileText, PieChart, LogOut, Menu, X, Receipt, Plus, Save, Trash2, Download, User as UserIcon, LogIn, Loader2
+  LayoutDashboard, UploadCloud, FileText, PieChart, LogOut, Receipt, Plus, Download, User as UserIcon, Loader2
 } from 'lucide-react';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RePieChart, Pie, Cell 
+  BarChart, Bar, XAxis, Tooltip, ResponsiveContainer
 } from 'recharts';
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-import { collection, addDoc, query, where, getDocs, orderBy, serverTimestamp, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
-import { ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
+import { collection, addDoc, query, where, getDocs, orderBy, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from './firebase';
-import { Invoice, InvoiceItem } from './types';
+import { Invoice } from './types';
 
-const API_BASE_URL = "http://localhost:3000"; // URL da sua API Node.js
+// Em produção (build), a API está no mesmo domínio (relativo). Em dev, usa localhost via Proxy ou direto.
+const API_BASE_URL = import.meta.env.PROD ? "" : "http://localhost:3000";
 
 // --- AUTH PAGE ---
 const AuthPage = () => {
