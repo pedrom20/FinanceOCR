@@ -172,9 +172,13 @@ const InvoiceUpload = ({ userId }: { userId: string }) => {
       const url = await getDownloadURL(storageRef);
 
       // 2. Chamar API OCR
+      const idToken = await auth.currentUser?.getIdToken();
       const response = await fetch(`${API_BASE_URL}/api/ocr/process-invoice`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
         body: JSON.stringify({ fileUrl: url })
       });
       const data = await response.json();
@@ -298,8 +302,29 @@ const InvoiceList = ({ userId }: { userId: string }) => {
 };
 
 const Reports = ({ userId }: { userId: string }) => {
-  const downloadPdf = () => {
-    window.open(`${API_BASE_URL}/api/reports/pdf?userId=${userId}`, '_blank');
+  const [downloading, setDownloading] = useState(false);
+
+  const downloadPdf = async () => {
+    setDownloading(true);
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      const response = await fetch(`${API_BASE_URL}/api/reports/pdf`, {
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      });
+      if (!response.ok) throw new Error('Falha ao gerar relatório');
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'relatorio-finocr.pdf';
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Erro ao descarregar relatório.');
+    } finally {
+      setDownloading(false);
+    }
   };
 
   return (
@@ -309,8 +334,9 @@ const Reports = ({ userId }: { userId: string }) => {
       </div>
       <h2 className="text-2xl font-bold mb-2">Relatórios Detalhados</h2>
       <p className="text-slate-500 mb-8 max-w-sm mx-auto">Gere um PDF profissional com todas as suas despesas para contabilidade ou controlo pessoal.</p>
-      <button onClick={downloadPdf} className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-3 mx-auto hover:bg-black transition-all">
-        <Download size={20} /> Descarregar PDF (Gerado via Node.js)
+      <button onClick={downloadPdf} disabled={downloading} className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-3 mx-auto hover:bg-black disabled:opacity-50 transition-all">
+        {downloading ? <Loader2 className="animate-spin" size={20} /> : <Download size={20} />}
+        {downloading ? 'A gerar...' : 'Descarregar PDF (Gerado via Node.js)'}
       </button>
     </div>
   );

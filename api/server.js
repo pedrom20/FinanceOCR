@@ -31,7 +31,30 @@ if (!admin.apps.length) {
   }
 }
 
-const db = admin.firestore();
+// Acesso preguiçoso ao Firestore: evita rebentar o arranque do servidor
+// quando as credenciais do Firebase Admin ainda não foram configuradas.
+function getDb() {
+  return admin.firestore();
+}
+
+// --- MIDDLEWARE: Verificar token de autenticação Firebase ---
+async function authenticate(req, res, next) {
+  const authHeader = req.headers.authorization || '';
+  const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  if (!idToken) {
+    return res.status(401).json({ error: 'Token de autenticação em falta' });
+  }
+
+  try {
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    req.uid = decoded.uid;
+    next();
+  } catch (error) {
+    console.error('Token inválido:', error.message);
+    res.status(401).json({ error: 'Token de autenticação inválido' });
+  }
+}
 
 // --- HELPER: Simple Parser for OCR text ---
 function parseInvoiceText(text) {
@@ -39,27 +62,31 @@ function parseInvoiceText(text) {
     storeName: "Loja Identificada",
     storeNif: "",
     invoiceNumber: "",
-    invoiceDate: new Date().toISOString().split('T')[0],
+    invoiceDate: "",
     totalAmount: 0,
     paymentMethod: "Dinheiro",
     items: []
   };
 
   const lines = text.split('\n');
-  
+
   // Regex patterns
   const nifRegex = /(?:NIF|CONTRIB|CONT):?\s*(\d{9})/i;
   const totalRegex = /(?:TOTAL|VALOR TOTAL|PAGAR):?\s*(\d+[.,]\d{2})/i;
   const dateRegex = /(\d{2}[-/]\d{2}[-/]\d{4})/;
+  const itemExclusionRegex = /\b(TOTAL|SUBTOTAL|IVA|NIF|TROCO|DESCONTO|PAGO)\b/i;
 
   lines.forEach(line => {
     // Detect NIF
     const nifMatch = line.match(nifRegex);
     if (nifMatch && !result.storeNif) result.storeNif = nifMatch[1];
 
-    // Detect Total
-    const totalMatch = line.match(totalRegex);
-    if (totalMatch && !result.totalAmount) result.totalAmount = parseFloat(totalMatch[1].replace(',', '.'));
+    // Detect Total: ignora "SUBTOTAL" e fica com a última ocorrência
+    // (o total final costuma aparecer depois de eventuais subtotais no recibo)
+    if (!/SUBTOTAL/i.test(line)) {
+      const totalMatch = line.match(totalRegex);
+      if (totalMatch) result.totalAmount = parseFloat(totalMatch[1].replace(',', '.'));
+    }
 
     // Detect Date
     const dateMatch = line.match(dateRegex);
@@ -67,7 +94,7 @@ function parseInvoiceText(text) {
 
     // Try to catch items (e.g. "Product Name 1.50")
     const itemMatch = line.match(/(.+)\s+(\d+[.,]\d{2})$/);
-    if (itemMatch && !line.includes('TOTAL')) {
+    if (itemMatch && !itemExclusionRegex.test(line)) {
       result.items.push({
         productName: itemMatch[1].trim(),
         quantity: 1,
@@ -77,13 +104,31 @@ function parseInvoiceText(text) {
     }
   });
 
+  if (!result.invoiceDate) result.invoiceDate = new Date().toISOString().split('T')[0];
+
   return result;
 }
 
+// --- HELPER: Confirma que o ficheiro pertence à pasta do próprio utilizador no Storage ---
+// Evita SSRF (aceitar qualquer URL arbitrário) e acesso a ficheiros de outros utilizadores.
+function isOwnStorageFile(fileUrl, uid) {
+  try {
+    const url = new URL(fileUrl);
+    if (url.hostname !== 'firebasestorage.googleapis.com') return false;
+    const decodedPath = decodeURIComponent(url.pathname);
+    return decodedPath.includes(`invoices/${uid}/`);
+  } catch {
+    return false;
+  }
+}
+
 // --- ENDPOINT: OCR ---
-app.post('/api/ocr/process-invoice', async (req, res) => {
+app.post('/api/ocr/process-invoice', authenticate, async (req, res) => {
   const { fileUrl } = req.body;
   if (!fileUrl) return res.status(400).json({ error: 'URL do ficheiro é obrigatória' });
+  if (!isOwnStorageFile(fileUrl, req.uid)) {
+    return res.status(400).json({ error: 'URL do ficheiro inválido' });
+  }
 
   try {
     console.log(`A processar OCR para: ${fileUrl}`);
@@ -98,11 +143,11 @@ app.post('/api/ocr/process-invoice', async (req, res) => {
 });
 
 // --- ENDPOINT: PDF Report ---
-app.get('/api/reports/pdf', async (req, res) => {
-  const { userId } = req.query;
+app.get('/api/reports/pdf', authenticate, async (req, res) => {
+  const userId = req.uid;
 
   try {
-    const invoicesSnap = await db.collection('invoices')
+    const invoicesSnap = await getDb().collection('invoices')
       .where('userId', '==', userId)
       .get();
 
