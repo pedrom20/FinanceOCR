@@ -12,9 +12,12 @@ app.use(express.json());
 
 // Firebase Admin Setup seguro via Env Vars
 if (!admin.apps.length) {
-  // Tratamento da Private Key que pode conter quebras de linha
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY 
-    ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') 
+  // Tratamento da Private Key: remove aspas envolventes que algumas plataformas
+  // de deploy (ex: Coolify) incluem literalmente no valor da env var, espaços
+  // em branco nas pontas, e converte "\n" literal em quebras de linha reais.
+  const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY?.trim();
+  const privateKey = rawPrivateKey
+    ? rawPrivateKey.replace(/^"(.*)"$/s, '$1').replace(/\\n/g, '\n')
     : undefined;
 
   if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && privateKey) {
