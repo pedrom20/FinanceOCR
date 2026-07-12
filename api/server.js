@@ -10,6 +10,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// --- ENDPOINT: Health Check (usado pelo Docker/Coolify) ---
+app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok' }));
+
 // Firebase Admin Setup seguro via Env Vars
 if (!admin.apps.length) {
   // Tratamento da Private Key: prefere FIREBASE_PRIVATE_KEY_BASE64 (a chave PEM
