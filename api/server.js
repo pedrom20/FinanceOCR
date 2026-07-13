@@ -5,10 +5,33 @@ const admin = require('firebase-admin');
 const Tesseract = require('tesseract.js');
 const PDFDocument = require('pdfkit');
 const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Guarda os ficheiros originais no disco do próprio servidor (em vez do Firebase
+// Storage, que exige o plano pago). Requer um volume persistente montado nesta
+// pasta em produção, para os ficheiros sobreviverem a redeploys.
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      const userDir = path.join(UPLOADS_DIR, req.uid);
+      fs.mkdirSync(userDir, { recursive: true });
+      cb(null, userDir);
+    },
+    filename: (req, file, cb) => {
+      const safeName = path.basename(file.originalname).replace(/[^a-zA-Z0-9._-]/g, '_');
+      cb(null, `${Date.now()}-${safeName}`);
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
 
 // --- ENDPOINT: Health Check (usado pelo Docker/Coolify) ---
 app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok' }));
@@ -120,37 +143,31 @@ function parseInvoiceText(text) {
   return result;
 }
 
-// --- HELPER: Confirma que o ficheiro pertence à pasta do próprio utilizador no Storage ---
-// Evita SSRF (aceitar qualquer URL arbitrário) e acesso a ficheiros de outros utilizadores.
-function isOwnStorageFile(fileUrl, uid) {
-  try {
-    const url = new URL(fileUrl);
-    if (url.hostname !== 'firebasestorage.googleapis.com') return false;
-    const decodedPath = decodeURIComponent(url.pathname);
-    return decodedPath.includes(`invoices/${uid}/`);
-  } catch {
-    return false;
-  }
-}
-
 // --- ENDPOINT: OCR ---
-app.post('/api/ocr/process-invoice', authenticate, async (req, res) => {
-  const { fileUrl } = req.body;
-  if (!fileUrl) return res.status(400).json({ error: 'URL do ficheiro é obrigatória' });
-  if (!isOwnStorageFile(fileUrl, req.uid)) {
-    return res.status(400).json({ error: 'URL do ficheiro inválido' });
-  }
+app.post('/api/ocr/process-invoice', authenticate, upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Ficheiro é obrigatório' });
 
   try {
-    console.log(`A processar OCR para: ${fileUrl}`);
-    const { data: { text } } = await Tesseract.recognize(fileUrl, 'por');
+    console.log(`A processar OCR para utilizador ${req.uid} (${req.file.originalname}, ${req.file.size} bytes)`);
+    const { data: { text } } = await Tesseract.recognize(req.file.path, 'por');
 
     const extractedData = parseInvoiceText(text);
-    res.json(extractedData);
+    res.json({ ...extractedData, fileName: req.file.filename });
   } catch (error) {
     console.error('Erro OCR:', error);
     res.status(500).json({ error: 'Falha ao processar OCR' });
   }
+});
+
+// --- ENDPOINT: Descarregar o ficheiro original de uma fatura ---
+app.get('/api/files/:fileName', authenticate, (req, res) => {
+  const safeFileName = path.basename(req.params.fileName);
+  const filePath = path.join(UPLOADS_DIR, req.uid, safeFileName);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'Ficheiro não encontrado' });
+  }
+  res.sendFile(filePath);
 });
 
 // --- ENDPOINT: PDF Report ---

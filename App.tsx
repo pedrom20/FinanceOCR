@@ -9,8 +9,7 @@ import {
 } from 'recharts';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
 import { collection, addDoc, query, where, getDocs, orderBy, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { auth, db, storage } from './firebase';
+import { auth, db } from './firebase';
 import { Invoice } from './types';
 
 // Em produção (build), a API está no mesmo domínio (relativo). Em dev, usa localhost via Proxy ou direto.
@@ -189,23 +188,20 @@ const InvoiceUpload = ({ userId }: { userId: string }) => {
     if (!file) return;
     setLoading(true);
     try {
-      // 1. Upload para Firebase Storage
-      const storageRef = ref(storage, `invoices/${userId}/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-
-      // 2. Chamar API OCR
+      // Envia o ficheiro diretamente para a API, que faz o OCR em memória
+      // (sem passar pelo Firebase Storage, que exige o plano pago).
       const idToken = await auth.currentUser?.getIdToken();
+      const formData = new FormData();
+      formData.append('file', file);
+
       const response = await fetch(`${API_BASE_URL}/api/ocr/process-invoice`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${idToken}`
-        },
-        body: JSON.stringify({ fileUrl: url })
+        headers: { 'Authorization': `Bearer ${idToken}` },
+        body: formData
       });
+      if (!response.ok) throw new Error('Falha ao processar OCR');
       const data = await response.json();
-      setInvoice({ ...data, fileUrl: url });
+      setInvoice(data);
     } catch (err) {
       alert("Erro ao processar ficheiro.");
     } finally {
@@ -293,6 +289,26 @@ const InvoiceList = ({ userId }: { userId: string }) => {
     fetch();
   }, [userId]);
 
+  const downloadFile = async (fileName: string) => {
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      const response = await fetch(`${API_BASE_URL}/api/files/${encodeURIComponent(fileName)}`, {
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      });
+      if (!response.ok) throw new Error('Falha ao descarregar ficheiro');
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Erro ao descarregar ficheiro.');
+    }
+  };
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold text-slate-800">Histórico de Compras</h1>
@@ -313,7 +329,11 @@ const InvoiceList = ({ userId }: { userId: string }) => {
                 <td className="px-6 py-4 font-bold text-slate-700">{inv.storeName}</td>
                 <td className="px-6 py-4 text-right font-black text-emerald-600">{inv.totalAmount.toFixed(2)} €</td>
                 <td className="px-6 py-4 text-center">
-                   <a href={inv.fileUrl} target="_blank" className="text-slate-400 hover:text-emerald-500"><Download size={18} /></a>
+                  {inv.fileName && (
+                    <button onClick={() => downloadFile(inv.fileName!)} className="text-slate-400 hover:text-emerald-500">
+                      <Download size={18} />
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

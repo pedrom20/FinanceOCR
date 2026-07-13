@@ -21,7 +21,7 @@ export interface Invoice {
   invoiceDate: string;
   totalAmount: number;
   paymentMethod: string;
-  fileUrl: string;
+  fileName?: string;
   createdAt: any;
   items?: InvoiceItem[];
 }
