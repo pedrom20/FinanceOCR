@@ -72,14 +72,15 @@ const AuthPage = () => {
 };
 
 // --- MAIN COMPONENTS ---
+const NAV_ITEMS = [
+  { path: '/', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
+  { path: '/invoices', label: 'Faturas', icon: <FileText size={20} /> },
+  { path: '/upload', label: 'Upload', icon: <UploadCloud size={20} /> },
+  { path: '/reports', label: 'Relatórios', icon: <PieChart size={20} /> },
+];
+
 const Sidebar = ({ user }: { user: any }) => {
   const location = useLocation();
-  const navItems = [
-    { path: '/', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-    { path: '/invoices', label: 'Faturas', icon: <FileText size={20} /> },
-    { path: '/upload', label: 'Upload', icon: <UploadCloud size={20} /> },
-    { path: '/reports', label: 'Relatórios', icon: <PieChart size={20} /> },
-  ];
 
   return (
     <div className="hidden md:flex flex-col w-64 bg-slate-900 text-white h-screen fixed">
@@ -88,7 +89,7 @@ const Sidebar = ({ user }: { user: any }) => {
         <span className="font-bold text-xl">FinOCR</span>
       </div>
       <nav className="flex-1 mt-6 px-4 space-y-2">
-        {navItems.map(item => (
+        {NAV_ITEMS.map(item => (
           <Link key={item.path} to={item.path} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${location.pathname === item.path ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             {item.icon}
             <span>{item.label}</span>
@@ -106,6 +107,28 @@ const Sidebar = ({ user }: { user: any }) => {
         </button>
       </div>
     </div>
+  );
+};
+
+const MobileNav = () => {
+  const location = useLocation();
+
+  return (
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 flex z-50">
+      {NAV_ITEMS.map(item => {
+        const active = location.pathname === item.path;
+        return (
+          <Link
+            key={item.path}
+            to={item.path}
+            className={`flex-1 flex flex-col items-center gap-1 py-2.5 text-xs ${active ? 'text-emerald-400' : 'text-slate-400'}`}
+          >
+            {item.icon}
+            <span>{item.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
   );
 };
 
@@ -362,7 +385,7 @@ const App = () => {
     <HashRouter>
       <div className="flex min-h-screen bg-slate-50">
         <Sidebar user={user} />
-        <main className="flex-1 md:ml-64 p-4 md:p-10">
+        <main className="flex-1 md:ml-64 p-4 pb-24 md:p-10">
           <Routes>
             <Route path="/" element={<Dashboard userId={user.uid} />} />
             <Route path="/invoices" element={<InvoiceList userId={user.uid} />} />
@@ -371,6 +394,7 @@ const App = () => {
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </main>
+        <MobileNav />
       </div>
     </HashRouter>
   );
