@@ -7,6 +7,10 @@ const PDFDocument = require('pdfkit');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+
+const execFileAsync = promisify(execFile);
 
 const app = express();
 app.use(cors());
@@ -37,7 +41,21 @@ const upload = multer({
     },
   }),
   limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/bmp', 'application/pdf'];
+    if (allowed.includes(file.mimetype)) return cb(null, true);
+    cb(new Error('Formato não suportado. Envie uma foto (JPG/PNG) ou um PDF da fatura.'));
+  },
 });
+
+// O Tesseract só lê imagens; faturas em PDF são convertidas para PNG (1ª página)
+// com o poppler (pdftoppm) antes do OCR. Requer poppler-utils instalado (já incluído
+// na imagem Docker; localmente instalar com `brew install poppler` ou `apt install poppler-utils`).
+async function convertPdfToImage(pdfPath) {
+  const outputPrefix = `${pdfPath}-page`;
+  await execFileAsync('pdftoppm', ['-png', '-r', '200', '-singlefile', pdfPath, outputPrefix]);
+  return `${outputPrefix}.png`;
+}
 
 // --- ENDPOINT: Health Check (usado pelo Docker/Coolify) ---
 app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok' }));
@@ -150,12 +168,26 @@ function parseInvoiceText(text) {
 }
 
 // --- ENDPOINT: OCR ---
-app.post('/api/ocr/process-invoice', authenticate, upload.single('file'), async (req, res) => {
+app.post('/api/ocr/process-invoice', authenticate, (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    next();
+  });
+}, async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Ficheiro é obrigatório' });
+
+  let ocrImagePath = req.file.path;
+  let convertedPath = null;
 
   try {
     console.log(`A processar OCR para utilizador ${req.uid} (${req.file.originalname}, ${req.file.size} bytes)`);
-    const { data: { text } } = await Tesseract.recognize(req.file.path, 'por', {
+
+    if (req.file.mimetype === 'application/pdf') {
+      convertedPath = await convertPdfToImage(req.file.path);
+      ocrImagePath = convertedPath;
+    }
+
+    const { data: { text } } = await Tesseract.recognize(ocrImagePath, 'por', {
       langPath: TESSDATA_DIR,
       cacheMethod: 'none',
       gzip: true,
@@ -166,6 +198,8 @@ app.post('/api/ocr/process-invoice', authenticate, upload.single('file'), async 
   } catch (error) {
     console.error('Erro OCR:', error);
     res.status(500).json({ error: 'Falha ao processar OCR' });
+  } finally {
+    if (convertedPath) fs.unlink(convertedPath, () => {});
   }
 });
 

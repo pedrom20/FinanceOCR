@@ -30,6 +30,11 @@ RUN npm run build
 FROM node:22-slim
 WORKDIR /app
 
+# poppler-utils (pdftoppm) converte a 1ª página de faturas em PDF para PNG,
+# para o Tesseract (que só lê imagens) conseguir processá-las.
+RUN apt-get update && apt-get install -y --no-install-recommends poppler-utils \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY api/package*.json ./
 RUN npm install --omit=dev
 

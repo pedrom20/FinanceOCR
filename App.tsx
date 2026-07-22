@@ -199,11 +199,14 @@ const InvoiceUpload = ({ userId }: { userId: string }) => {
         headers: { 'Authorization': `Bearer ${idToken}` },
         body: formData
       });
-      if (!response.ok) throw new Error('Falha ao processar OCR');
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.error || 'Falha ao processar OCR');
+      }
       const data = await response.json();
       setInvoice(data);
     } catch (err) {
-      alert("Erro ao processar ficheiro.");
+      alert(err instanceof Error ? err.message : "Erro ao processar ficheiro.");
     } finally {
       setLoading(false);
     }
@@ -239,7 +242,7 @@ const InvoiceUpload = ({ userId }: { userId: string }) => {
           </div>
           <h2 className="text-2xl font-bold text-slate-800 mb-2">Novo Documento</h2>
           <p className="text-slate-500 mb-8">Arraste a sua fatura ou selecione um ficheiro</p>
-          <input type="file" onChange={e => setFile(e.target.files?.[0] || null)} className="mb-6 block mx-auto text-sm text-slate-500" />
+          <input type="file" accept="image/jpeg,image/png,image/webp,image/bmp,application/pdf" onChange={e => setFile(e.target.files?.[0] || null)} className="mb-6 block mx-auto text-sm text-slate-500" />
           <button 
             disabled={!file || loading}
             onClick={handleProcess}
