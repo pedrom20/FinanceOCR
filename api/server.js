@@ -18,6 +18,12 @@ app.use(express.json());
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
+// Dados de idioma do Tesseract incluídos no projeto (api/tessdata/por.traineddata.gz)
+// em vez de descarregados do CDN da jsdelivr a cada arranque do container — isso
+// causava OCR muito lento ou a falhar em produção quando a rede de saída do
+// container estava limitada/instável.
+const TESSDATA_DIR = path.join(__dirname, 'tessdata');
+
 const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
@@ -149,7 +155,11 @@ app.post('/api/ocr/process-invoice', authenticate, upload.single('file'), async 
 
   try {
     console.log(`A processar OCR para utilizador ${req.uid} (${req.file.originalname}, ${req.file.size} bytes)`);
-    const { data: { text } } = await Tesseract.recognize(req.file.path, 'por');
+    const { data: { text } } = await Tesseract.recognize(req.file.path, 'por', {
+      langPath: TESSDATA_DIR,
+      cacheMethod: 'none',
+      gzip: true,
+    });
 
     const extractedData = parseInvoiceText(text);
     res.json({ ...extractedData, fileName: req.file.filename });
