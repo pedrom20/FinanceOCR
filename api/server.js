@@ -53,7 +53,7 @@ const upload = multer({
 // na imagem Docker; localmente instalar com `brew install poppler` ou `apt install poppler-utils`).
 async function convertPdfToImage(pdfPath) {
   const outputPrefix = `${pdfPath}-page`;
-  await execFileAsync('pdftoppm', ['-png', '-r', '200', '-singlefile', pdfPath, outputPrefix]);
+  await execFileAsync('pdftoppm', ['-png', '-r', '300', '-singlefile', pdfPath, outputPrefix]);
   return `${outputPrefix}.png`;
 }
 
@@ -192,6 +192,8 @@ app.post('/api/ocr/process-invoice', authenticate, (req, res, next) => {
       cacheMethod: 'none',
       gzip: true,
     });
+
+    console.log(`Texto OCR (${text.length} chars) para ${req.uid}:\n${text}`);
 
     const extractedData = parseInvoiceText(text);
     res.json({ ...extractedData, fileName: req.file.filename });
