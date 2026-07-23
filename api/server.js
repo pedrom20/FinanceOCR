@@ -126,17 +126,32 @@ function parseInvoiceText(text) {
     items: []
   };
 
-  const lines = text.split('\n');
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
 
   // Regex patterns
   // O NIF costuma aparecer com espaços entre grupos de dígitos (ex: "114 980 136"),
   // por isso captura-se dígitos+espaços e limpam-se os espaços depois.
   const nifRegex = /(?:NIF|NIPC|CONTRIB(?:UINTE)?)\D{0,8}([\d ]{9,13})/i;
-  // O valor entre o rótulo e o número pode ter símbolo de euro ou outro texto pelo
-  // meio (ex: "Valor a Pagar € 72,55"), daí o gap tolerante em vez de \s* estrito.
-  const totalRegex = /(?:VALOR A PAGAR|TOTAL A PAGAR|VALOR TOTAL|TOTAL|PAGAR)[^\d\n]{0,12}(\d+[.,]\d{2})/i;
+  // Entre o rótulo e o valor pode haver espaços de alinhamento (talões imprimem o
+  // preço encostado à direita), dois pontos ou o símbolo de euro — mas não outras
+  // palavras, para não apanhar o número errado em linhas como
+  // "Total da fatura de junho 58,980 ... € 72,55".
+  const totalRegex = /(?:VALOR A PAGAR|TOTAL A PAGAR|VALOR TOTAL|TOTAL|PAGAR)[:\s€]*(\d+[.,]\d{2})/i;
   const dateRegex = /(\d{2}[-/]\d{2}[-/]\d{4})/;
-  const itemExclusionRegex = /\b(TOTAL|SUBTOTAL|IVA|NIF|TROCO|DESCONTO|PAGO)\b/i;
+  const itemExclusionRegex = /\b(TOTAL|SUBTOTAL|IVA|NIF|NIPC|CONTRIBUINTE|TROCO|DESCONTO|PAGO|REFER[ÊE]NCIA|CLIENTE|CONTA|IBAN|BIC|D[ÉE]BITO|PAGAMENTO|FATURA|EMISS[ÃA]O|MORADA|ATCUD|CR[ÉE]DITO)\b/i;
+
+  // Nome da loja: normalmente é uma das primeiras linhas do cabeçalho, antes de
+  // qualquer linha "administrativa" (NIF, Fatura Nº, Data, etc.). Escolhe-se a
+  // primeira linha legível (maioria de letras, não só ruído do OCR) até lá.
+  const storeStopRegex = /\b(NIF|NIPC|CONTRIBUINTE|FATURA|FACTURA|TAL[ÃA]O|RECIBO|ATCUD|DATA)\b/i;
+  for (const line of lines.slice(0, 12)) {
+    if (storeStopRegex.test(line)) break;
+    const letters = (line.match(/[A-Za-zÀ-ÿ]/g) || []).length;
+    if (letters >= 3 && letters / line.length >= 0.5) {
+      result.storeName = line;
+      break;
+    }
+  }
 
   lines.forEach(line => {
     // Detect NIF
@@ -162,14 +177,21 @@ function parseInvoiceText(text) {
     }
 
     // Try to catch items (e.g. "Product Name 1.50")
-    const itemMatch = line.match(/(.+)\s+(\d+[.,]\d{2})$/);
+    const itemMatch = line.match(/(.+?)\s+(\d+[.,]\d{2})$/);
     if (itemMatch && !itemExclusionRegex.test(line)) {
-      result.items.push({
-        productName: itemMatch[1].trim(),
-        quantity: 1,
-        unitPrice: parseFloat(itemMatch[2].replace(',', '.')),
-        totalPrice: parseFloat(itemMatch[2].replace(',', '.'))
-      });
+      const productName = itemMatch[1].trim().replace(/\s{2,}/g, ' ');
+      const price = parseFloat(itemMatch[2].replace(',', '.'));
+      const lettersInName = (productName.match(/[A-Za-zÀ-ÿ]/g) || []).length;
+      // Só aceita linhas que pareçam mesmo um produto: nome com letras reais
+      // e preço num intervalo plausível (evita apanhar nºs de referência, etc.)
+      if (lettersInName >= 3 && price > 0 && price < 10000) {
+        result.items.push({
+          productName,
+          quantity: 1,
+          unitPrice: price,
+          totalPrice: price
+        });
+      }
     }
   });
 

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { 
-  LayoutDashboard, UploadCloud, FileText, PieChart, LogOut, Receipt, Plus, Download, User as UserIcon, Loader2
+  LayoutDashboard, UploadCloud, FileText, PieChart, LogOut, Receipt, Plus, Download, User as UserIcon, Loader2, Trash2
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, Tooltip, ResponsiveContainer
@@ -268,6 +268,44 @@ const InvoiceUpload = ({ userId }: { userId: string }) => {
                 <div><label className="text-xs font-bold text-slate-400 uppercase">Total</label><input type="number" className="w-full border-b py-2 outline-none focus:border-emerald-500 text-2xl font-bold" value={invoice.totalAmount} onChange={e => setInvoice({...invoice, totalAmount: parseFloat(e.target.value)})} /></div>
              </div>
           </div>
+          {invoice.items && invoice.items.length > 0 && (
+            <div className="px-8 pb-8">
+              <label className="text-xs font-bold text-slate-400 uppercase">Artigos</label>
+              <div className="mt-3 divide-y divide-slate-100 border rounded-xl overflow-hidden">
+                {invoice.items.map((item: any, idx: number) => (
+                  <div key={idx} className="flex items-center gap-3 px-4 py-2.5">
+                    <input
+                      className="flex-1 outline-none text-sm text-slate-700 bg-transparent"
+                      value={item.productName}
+                      onChange={e => {
+                        const items = [...invoice.items];
+                        items[idx] = { ...items[idx], productName: e.target.value };
+                        setInvoice({ ...invoice, items });
+                      }}
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="w-24 outline-none text-sm text-right font-semibold text-slate-700 bg-transparent"
+                      value={item.unitPrice}
+                      onChange={e => {
+                        const price = parseFloat(e.target.value) || 0;
+                        const items = [...invoice.items];
+                        items[idx] = { ...items[idx], unitPrice: price, totalPrice: price };
+                        setInvoice({ ...invoice, items });
+                      }}
+                    />
+                    <button
+                      onClick={() => setInvoice({ ...invoice, items: invoice.items.filter((_: any, i: number) => i !== idx) })}
+                      className="text-slate-300 hover:text-red-500"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="p-8 border-t bg-slate-50 flex justify-end">
             <button onClick={saveToFirestore} className="bg-emerald-600 text-white px-10 py-3 rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">
               Guardar na Cloud
