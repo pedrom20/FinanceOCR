@@ -153,6 +153,15 @@ function parseInvoiceText(text) {
     }
   }
 
+  // Nas faturas em PDF o cabeçalho é muitas vezes um logótipo, que o OCR lê como
+  // ruído ilegível antes de qualquer linha "administrativa" — a heurística acima
+  // falha nesses casos. Como alternativa, procura-se um domínio (ex: "meo.pt")
+  // no texto, que costuma aparecer no rodapé/contactos e identifica a empresa.
+  if (result.storeName === 'Loja Identificada') {
+    const domainMatch = text.match(/\b([a-z][a-z0-9-]{1,20})\.(?:pt|com|eu)\b/i);
+    if (domainMatch) result.storeName = domainMatch[1].toUpperCase();
+  }
+
   lines.forEach(line => {
     // Detect NIF
     const nifMatch = line.match(nifRegex);
