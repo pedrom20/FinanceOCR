@@ -129,15 +129,22 @@ function parseInvoiceText(text) {
   const lines = text.split('\n');
 
   // Regex patterns
-  const nifRegex = /(?:NIF|CONTRIB|CONT):?\s*(\d{9})/i;
-  const totalRegex = /(?:TOTAL|VALOR TOTAL|PAGAR):?\s*(\d+[.,]\d{2})/i;
+  // O NIF costuma aparecer com espaços entre grupos de dígitos (ex: "114 980 136"),
+  // por isso captura-se dígitos+espaços e limpam-se os espaços depois.
+  const nifRegex = /(?:NIF|NIPC|CONTRIB(?:UINTE)?)\D{0,8}([\d ]{9,13})/i;
+  // O valor entre o rótulo e o número pode ter símbolo de euro ou outro texto pelo
+  // meio (ex: "Valor a Pagar € 72,55"), daí o gap tolerante em vez de \s* estrito.
+  const totalRegex = /(?:VALOR A PAGAR|TOTAL A PAGAR|VALOR TOTAL|TOTAL|PAGAR)[^\d\n]{0,12}(\d+[.,]\d{2})/i;
   const dateRegex = /(\d{2}[-/]\d{2}[-/]\d{4})/;
   const itemExclusionRegex = /\b(TOTAL|SUBTOTAL|IVA|NIF|TROCO|DESCONTO|PAGO)\b/i;
 
   lines.forEach(line => {
     // Detect NIF
     const nifMatch = line.match(nifRegex);
-    if (nifMatch && !result.storeNif) result.storeNif = nifMatch[1];
+    if (nifMatch && !result.storeNif) {
+      const digits = nifMatch[1].replace(/\D/g, '');
+      if (digits.length === 9) result.storeNif = digits;
+    }
 
     // Detect Total: ignora "SUBTOTAL" e fica com a última ocorrência
     // (o total final costuma aparecer depois de eventuais subtotais no recibo)
@@ -146,9 +153,13 @@ function parseInvoiceText(text) {
       if (totalMatch) result.totalAmount = parseFloat(totalMatch[1].replace(',', '.'));
     }
 
-    // Detect Date
+    // Detect Date: converte DD/MM/AAAA ou DD-MM-AAAA para AAAA-MM-DD, formato
+    // exigido pelo <input type="date"> do formulário de confirmação.
     const dateMatch = line.match(dateRegex);
-    if (dateMatch && !result.invoiceDate) result.invoiceDate = dateMatch[1];
+    if (dateMatch && !result.invoiceDate) {
+      const [day, month, year] = dateMatch[1].split(/[-/]/);
+      result.invoiceDate = `${year}-${month}-${day}`;
+    }
 
     // Try to catch items (e.g. "Product Name 1.50")
     const itemMatch = line.match(/(.+)\s+(\d+[.,]\d{2})$/);
