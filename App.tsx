@@ -229,7 +229,8 @@ const InvoiceUpload = ({ userId }: { userId: string }) => {
       setInvoice(null);
       setFile(null);
     } catch (err) {
-      alert("Erro ao guardar.");
+      console.error('Erro ao guardar fatura:', err);
+      alert(`Erro ao guardar: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
