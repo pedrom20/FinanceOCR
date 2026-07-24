@@ -258,6 +258,44 @@ app.get('/api/files/:fileName', authenticate, (req, res) => {
   res.sendFile(filePath);
 });
 
+// --- ENDPOINT: Guardar Fatura ---
+// A escrita é feita aqui pelo servidor (via firebase-admin) em vez de
+// diretamente do browser para o Firestore: a ligação direta browser→Firestore
+// (WebSocket ou long-polling) tem-se mostrado bloqueada em alguns
+// browsers/redes de utilizadores, deixando a gravação presa sem erro nem
+// sucesso. O servidor já fala com o Firestore sem problemas (usado no
+// endpoint de relatório), por isso evita essa dependência da rede do cliente.
+app.post('/api/invoices', authenticate, async (req, res) => {
+  const { items, ...invoiceData } = req.body || {};
+
+  if (typeof invoiceData.storeName !== 'string' || typeof invoiceData.totalAmount !== 'number') {
+    return res.status(400).json({ error: 'Dados da fatura inválidos' });
+  }
+
+  try {
+    const db = getDb();
+    const docRef = await db.collection('invoices').add({
+      ...invoiceData,
+      userId: req.uid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    if (Array.isArray(items) && items.length > 0) {
+      const batch = db.batch();
+      items.forEach(item => {
+        const itemRef = docRef.collection('invoiceItems').doc();
+        batch.set(itemRef, item);
+      });
+      await batch.commit();
+    }
+
+    res.status(201).json({ id: docRef.id });
+  } catch (error) {
+    console.error('Erro ao guardar fatura:', error);
+    res.status(500).json({ error: 'Falha ao guardar fatura' });
+  }
+});
+
 // --- ENDPOINT: PDF Report ---
 app.get('/api/reports/pdf', authenticate, async (req, res) => {
   const userId = req.uid;

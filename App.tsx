@@ -8,7 +8,7 @@ import {
   BarChart, Bar, XAxis, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword } from 'firebase/auth';
-import { collection, addDoc, query, where, getDocs, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { Invoice } from './types';
 
@@ -215,28 +215,25 @@ const InvoiceUpload = ({ userId }: { userId: string }) => {
 
   const saveToFirestore = async () => {
     setSaving(true);
-    // Evita ficar preso indefinidamente sem qualquer sinal caso o Firestore
-    // esteja inacessível (ex: bloqueado por firewall ou extensão do browser).
-    const timeout = (ms: number) => new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Tempo limite excedido a contactar o Firestore. Verifique a ligação à internet ou bloqueadores de anúncios/privacidade no browser.')), ms)
-    );
     try {
-      await Promise.race([
-        (async () => {
-          const docRef = await addDoc(collection(db, 'invoices'), {
-            ...invoice,
-            userId,
-            createdAt: serverTimestamp()
-          });
-          // Adicionar itens se existirem
-          if (invoice.items) {
-            for (const item of invoice.items) {
-              await addDoc(collection(db, 'invoices', docRef.id, 'invoiceItems'), item);
-            }
-          }
-        })(),
-        timeout(15000)
-      ]);
+      // A gravação passa pela API (que usa firebase-admin) em vez de escrever
+      // diretamente do browser para o Firestore — essa ligação direta tem-se
+      // mostrado bloqueada nalguns browsers/redes, deixando a gravação presa.
+      const idToken = await auth.currentUser?.getIdToken();
+      const response = await fetch(`${API_BASE_URL}/api/invoices`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${idToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(invoice),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.error || 'Falha ao guardar fatura');
+      }
+
       alert("Fatura guardada com sucesso!");
       setInvoice(null);
       setFile(null);
