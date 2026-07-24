@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore } from 'firebase/firestore';
 
 // As variáveis devem começar com VITE_ para serem expostas ao frontend no build
 const firebaseConfig = {
@@ -14,4 +14,10 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+// O canal WebSocket normal do Firestore fica muitas vezes bloqueado por
+// firewalls/redes restritivas ou extensões de bloqueio de anúncios, deixando os
+// pedidos presos sem nunca responder. Forçar long-polling (HTTP simples) evita
+// esse bloqueio, ao custo de latência ligeiramente maior — irrelevante aqui.
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+});
