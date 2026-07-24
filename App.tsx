@@ -182,6 +182,7 @@ const Dashboard = ({ userId }: { userId: string }) => {
 const InvoiceUpload = ({ userId }: { userId: string }) => {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [invoice, setInvoice] = useState<any>(null);
 
   const handleProcess = async () => {
@@ -213,24 +214,37 @@ const InvoiceUpload = ({ userId }: { userId: string }) => {
   };
 
   const saveToFirestore = async () => {
+    setSaving(true);
+    // Evita ficar preso indefinidamente sem qualquer sinal caso o Firestore
+    // esteja inacessível (ex: bloqueado por firewall ou extensão do browser).
+    const timeout = (ms: number) => new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Tempo limite excedido a contactar o Firestore. Verifique a ligação à internet ou bloqueadores de anúncios/privacidade no browser.')), ms)
+    );
     try {
-      const docRef = await addDoc(collection(db, 'invoices'), {
-        ...invoice,
-        userId,
-        createdAt: serverTimestamp()
-      });
-      // Adicionar itens se existirem
-      if (invoice.items) {
-        for (const item of invoice.items) {
-          await addDoc(collection(db, 'invoices', docRef.id, 'invoiceItems'), item);
-        }
-      }
+      await Promise.race([
+        (async () => {
+          const docRef = await addDoc(collection(db, 'invoices'), {
+            ...invoice,
+            userId,
+            createdAt: serverTimestamp()
+          });
+          // Adicionar itens se existirem
+          if (invoice.items) {
+            for (const item of invoice.items) {
+              await addDoc(collection(db, 'invoices', docRef.id, 'invoiceItems'), item);
+            }
+          }
+        })(),
+        timeout(15000)
+      ]);
       alert("Fatura guardada com sucesso!");
       setInvoice(null);
       setFile(null);
     } catch (err) {
       console.error('Erro ao guardar fatura:', err);
       alert(`Erro ao guardar: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -308,8 +322,13 @@ const InvoiceUpload = ({ userId }: { userId: string }) => {
             </div>
           )}
           <div className="p-8 border-t bg-slate-50 flex justify-end">
-            <button onClick={saveToFirestore} className="bg-emerald-600 text-white px-10 py-3 rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">
-              Guardar na Cloud
+            <button
+              onClick={saveToFirestore}
+              disabled={saving}
+              className="bg-emerald-600 text-white px-10 py-3 rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200 disabled:opacity-50 flex items-center gap-2"
+            >
+              {saving && <Loader2 className="animate-spin" size={18} />}
+              {saving ? 'A guardar...' : 'Guardar na Cloud'}
             </button>
           </div>
         </div>
