@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(composer install *)",
+      "Bash(composer show *)",
+      "Bash(php tests/verify-ocr-parser.php)",
+      "Bash(brew services *)",
+      "Bash(/opt/homebrew/opt/mysql/bin/mysqladmin ping *)",
+      "Bash(mysqladmin ping *)",
+      "Bash(mysql -u root -e \"SELECT 1;\")"
+    ]
+  }
+}

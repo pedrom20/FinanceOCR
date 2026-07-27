@@ -1,0 +1,17 @@
+CONTINENTE MODELO
+HIPERMERCADOS S.A.
+NIF: 502 011 475
+Rua Exemplo, 123 Lisboa
+
+TALÃO DE VENDA
+
+PAO DE FORMA BIMBO        1,99
+LEITE MIMOSA 1L            0,85
+IOGURTE DANONE PACK4       2,49
+DETERGENTE SKIP 1.5L       6,30
+
+SUBTOTAL                  11,63
+IVA 23%                    2,68
+TOTAL                     11,63
+
+Data: 22/07/2026

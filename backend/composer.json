@@ -1,0 +1,16 @@
+{
+    "name": "financeocr/backend",
+    "description": "FinanceOCR API backend (PHP + MySQL, no external service dependency)",
+    "type": "project",
+    "require": {
+        "php": ">=8.1",
+        "firebase/php-jwt": "^7.1",
+        "dompdf/dompdf": "^3.0",
+        "vlucas/phpdotenv": "^5.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "FinanceOcr\\": "src/"
+        }
+    }
+}
