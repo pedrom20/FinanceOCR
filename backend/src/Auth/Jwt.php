@@ -3,7 +3,7 @@
 namespace FinanceOcr\Auth;
 
 use FinanceOcr\Config;
-use Firebase\JWT\JWT;
+use Firebase\JWT\JWT as FirebaseJwt;
 use Firebase\JWT\Key;
 
 /**
@@ -24,14 +24,14 @@ class Jwt
             'iat' => $now,
             'exp' => $now + $ttlDays * 86400,
         ];
-        return JWT::encode($payload, self::secret(), 'HS256');
+        return FirebaseJwt::encode($payload, self::secret(), 'HS256');
     }
 
     /** @return array{sub:string,email:string,name:string,iat:int,exp:int}|null */
     public static function verify(string $token): ?array
     {
         try {
-            $decoded = JWT::decode($token, new Key(self::secret(), 'HS256'));
+            $decoded = FirebaseJwt::decode($token, new Key(self::secret(), 'HS256'));
             return (array) $decoded;
         } catch (\Throwable $e) {
             return null;
