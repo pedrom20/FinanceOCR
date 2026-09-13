@@ -1,8 +1,7 @@
 export interface User {
-  uid: string;
+  id: string;
   name: string;
   email: string;
-  createdAt: any;
 }
 
 export interface InvoiceItem {
@@ -12,16 +11,16 @@ export interface InvoiceItem {
   totalPrice: number;
 }
 
+// Forma devolvida por InvoiceRepository::mapRow() (backend/src/Repositories/InvoiceRepository.php)
 export interface Invoice {
-  id?: string;
-  userId: string;
+  id: string;
   storeName: string;
   storeNif: string;
   invoiceNumber: string;
   invoiceDate: string;
   totalAmount: number;
   paymentMethod: string;
-  fileName?: string;
-  createdAt: any;
+  fileName?: string | null;
+  createdAt: string;
   items?: InvoiceItem[];
 }

@@ -1,6 +1,6 @@
 {
   "name": "FinOCR Pro",
-  "description": "Gestão financeira com OCR (Node.js) e Cloud (Firebase).",
+  "description": "Gestão financeira com OCR (PHP + MySQL, self-hosted).",
   "requestFramePermissions": [
     "camera"
   ]
