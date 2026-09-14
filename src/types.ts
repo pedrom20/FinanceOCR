@@ -15,6 +15,7 @@ export interface InvoiceItem {
 export interface Invoice {
   id: string;
   storeName: string;
+  storeLocation?: string;
   storeNif: string;
   invoiceNumber: string;
   invoiceDate: string;

@@ -4,6 +4,7 @@ namespace FinanceOcr\Controllers;
 
 use FinanceOcr\Auth\AuthMiddleware;
 use FinanceOcr\Config;
+use FinanceOcr\Repositories\InvoiceRepository;
 use FinanceOcr\Services\InvoiceParser;
 use FinanceOcr\Services\OcrService;
 use FinanceOcr\Support\Response;
@@ -67,6 +68,20 @@ class OcrController
             error_log('Texto OCR (' . strlen($text) . " chars) para {$userId}:\n{$text}");
 
             $extracted = InvoiceParser::parse($text);
+
+            // O texto extraído para o nome da loja costuma incluir a filial
+            // (ex: "LIDL & Cia - ODEMIRA"), que varia de recibo para recibo mesmo
+            // sendo o mesmo comerciante. Guarda-se essa variante em storeLocation
+            // e, se este NIF já tiver sido confirmado antes por este utilizador,
+            // usa-se esse nome (já normalizado por ele) em vez do texto deste OCR.
+            $extracted['storeLocation'] = $extracted['storeName'];
+            if ($extracted['storeNif'] !== '') {
+                $knownName = InvoiceRepository::findStoreNameByNif((int) $userId, $extracted['storeNif']);
+                if ($knownName !== null) {
+                    $extracted['storeName'] = $knownName;
+                }
+            }
+
             Response::json(array_merge($extracted, ['fileName' => $storedName]));
         } catch (\Throwable $e) {
             error_log('Erro OCR: ' . $e->getMessage());

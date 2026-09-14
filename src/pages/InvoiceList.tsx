@@ -46,7 +46,12 @@ export const InvoiceList = () => {
             {invoices.map(inv => (
               <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-6 py-4 text-sm">{inv.invoiceDate}</td>
-                <td className="px-6 py-4 font-bold text-slate-700">{inv.storeName}</td>
+                <td className="px-6 py-4">
+                  <div className="font-bold text-slate-700">{inv.storeName}</div>
+                  {inv.storeLocation && inv.storeLocation !== inv.storeName && (
+                    <div className="text-xs text-slate-400">{inv.storeLocation}</div>
+                  )}
+                </td>
                 <td className="px-6 py-4 text-right font-black text-emerald-600">{inv.totalAmount.toFixed(2)} €</td>
                 <td className="px-6 py-4 text-center">
                   {inv.fileName && (

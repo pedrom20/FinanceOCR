@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id         INT UNSIGNED NOT NULL,
   store_name      VARCHAR(255) NOT NULL,
+  store_location  VARCHAR(255) NOT NULL DEFAULT '',
   store_nif       VARCHAR(20)  NOT NULL DEFAULT '',
   invoice_number  VARCHAR(100) NOT NULL DEFAULT '',
   invoice_date    DATE NULL,

@@ -12,12 +12,13 @@ class InvoiceRepository
         $db->beginTransaction();
         try {
             $stmt = $db->prepare(
-                'INSERT INTO invoices (user_id, store_name, store_nif, invoice_number, invoice_date, total_amount, payment_method, file_name)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+                'INSERT INTO invoices (user_id, store_name, store_location, store_nif, invoice_number, invoice_date, total_amount, payment_method, file_name)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
             $stmt->execute([
                 $userId,
                 $invoiceData['storeName'],
+                $invoiceData['storeLocation'] ?? '',
                 $invoiceData['storeNif'] ?? '',
                 $invoiceData['invoiceNumber'] ?? '',
                 $invoiceData['invoiceDate'] ?: null,
@@ -53,11 +54,27 @@ class InvoiceRepository
     public static function listByUser(int $userId): array
     {
         $stmt = Database::get()->prepare(
-            'SELECT id, store_name, store_nif, invoice_number, invoice_date, total_amount, payment_method, file_name, created_at
+            'SELECT id, store_name, store_location, store_nif, invoice_number, invoice_date, total_amount, payment_method, file_name, created_at
              FROM invoices WHERE user_id = ? ORDER BY created_at DESC'
         );
         $stmt->execute([$userId]);
         return array_map([self::class, 'mapRow'], $stmt->fetchAll());
+    }
+
+    /**
+     * Nome de loja mais recentemente confirmado pelo próprio utilizador para
+     * este NIF — usado para normalizar o nome entre filiais do mesmo
+     * comerciante (ex: "Lidl" em vez de "LIDL & Cia - ODEMIRA" numa filial e
+     * "LIDL & Cia - SINTRA" noutra).
+     */
+    public static function findStoreNameByNif(int $userId, string $storeNif): ?string
+    {
+        $stmt = Database::get()->prepare(
+            'SELECT store_name FROM invoices WHERE user_id = ? AND store_nif = ? ORDER BY created_at DESC LIMIT 1'
+        );
+        $stmt->execute([$userId, $storeNif]);
+        $name = $stmt->fetchColumn();
+        return $name === false ? null : $name;
     }
 
     private static function mapRow(array $row): array
@@ -65,6 +82,7 @@ class InvoiceRepository
         return [
             'id' => (string) $row['id'],
             'storeName' => $row['store_name'],
+            'storeLocation' => $row['store_location'],
             'storeNif' => $row['store_nif'],
             'invoiceNumber' => $row['invoice_number'],
             'invoiceDate' => $row['invoice_date'],

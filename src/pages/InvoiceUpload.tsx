@@ -70,6 +70,7 @@ export const InvoiceUpload = () => {
           <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div><label className="text-xs font-bold text-slate-400 uppercase">Loja</label><input className="w-full border-b py-2 outline-none focus:border-emerald-500" value={invoice.storeName} onChange={e => setInvoice({ ...invoice, storeName: e.target.value })} /></div>
+              <div><label className="text-xs font-bold text-slate-400 uppercase">Localização</label><input className="w-full border-b py-2 outline-none focus:border-emerald-500" value={invoice.storeLocation || ''} onChange={e => setInvoice({ ...invoice, storeLocation: e.target.value })} /></div>
               <div><label className="text-xs font-bold text-slate-400 uppercase">NIF</label><input className="w-full border-b py-2 outline-none focus:border-emerald-500" value={invoice.storeNif} onChange={e => setInvoice({ ...invoice, storeNif: e.target.value })} /></div>
             </div>
             <div className="space-y-4">
