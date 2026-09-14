@@ -34,5 +34,19 @@ if (count($market['items']) === 4) {
     $failures += !assertField('item[0].unitPrice', $market['items'][0]['unitPrice'], 1.99);
 }
 
+echo "\n--- Lidl receipt fixture (real OCR output, VAT-letter suffixes + MULTIBANCO line) ---\n";
+$lidlText = file_get_contents(__DIR__ . '/fixtures/lidl-receipt-ocr-text.txt');
+$lidl = InvoiceParser::parse($lidlText);
+$failures += !assertField('storeName', $lidl['storeName'], 'LIDL & Cia - ODEMIRA');
+$failures += !assertField('storeNif', $lidl['storeNif'], '503340855');
+$failures += !assertField('totalAmount', $lidl['totalAmount'], 12.19);
+$failures += !assertField('invoiceDate', $lidl['invoiceDate'], '2026-09-08');
+$failures += !assertField('paymentMethod', $lidl['paymentMethod'], 'Multibanco');
+$failures += !assertField('items count', count($lidl['items']), 6);
+if (count($lidl['items']) === 6) {
+    $failures += !assertField('item[0].productName', $lidl['items'][0]['productName'], 'LIMAO');
+    $failures += !assertField('item[0].unitPrice', $lidl['items'][0]['unitPrice'], 1.14);
+}
+
 echo "\n" . ($failures === 0 ? "ALL PASSED\n" : "{$failures} FAILURE(S)\n");
 exit($failures === 0 ? 0 : 1);
