@@ -5,7 +5,7 @@ namespace FinanceOcr\Controllers;
 use FinanceOcr\Auth\AuthMiddleware;
 use FinanceOcr\Config;
 use FinanceOcr\Repositories\InvoiceRepository;
-use FinanceOcr\Services\AiInvoiceExtractor;
+use FinanceOcr\Services\Ai\AiProviderFactory;
 use FinanceOcr\Services\InvoiceParser;
 use FinanceOcr\Services\OcrService;
 use FinanceOcr\Support\Response;
@@ -69,21 +69,23 @@ class OcrController
             error_log('Texto OCR (' . strlen($text) . " chars) para {$userId}:\n{$text}");
 
             $extracted = InvoiceParser::parse($text);
+            $provider = AiProviderFactory::current();
 
             // O parser local (grátis, regex) falha em formatos que nunca viu.
             // Quando o resultado parece pouco fiável, tenta-se um fallback
-            // pago (visão da IA sobre a própria imagem) — só nesse caso, para
-            // manter o custo baixo. Uma falha aqui não deve rebentar o pedido:
-            // fica-se com o resultado do parser local.
+            // pago (visão da IA sobre a própria imagem, no fornecedor ativo
+            // nas definições) — só nesse caso, para manter o custo baixo. Uma
+            // falha aqui não deve rebentar o pedido: fica-se com o resultado
+            // do parser local.
             $lowConfidence = empty($extracted['items'])
                 || $extracted['storeNif'] === ''
                 || $extracted['totalAmount'] <= 0;
             if ($lowConfidence) {
                 try {
                     $aiMediaType = $mime === 'application/pdf' ? 'image/png' : $mime;
-                    $aiResult = AiInvoiceExtractor::extract($ocrImagePath, $aiMediaType);
+                    $aiResult = $provider?->extractInvoice($ocrImagePath, $aiMediaType);
                     if ($aiResult !== null) {
-                        error_log("Fallback IA usado para utilizador {$userId} (parse local insuficiente)");
+                        error_log("Fallback IA (" . get_class($provider) . ") usado para utilizador {$userId} (parse local insuficiente)");
                         if ($aiResult['storeName'] !== '') {
                             $extracted['storeName'] = $aiResult['storeName'];
                         }
@@ -114,7 +116,7 @@ class OcrController
                 try {
                     $productNames = array_column($extracted['items'], 'productName');
                     $knownCategories = InvoiceRepository::listCategoriesForUser((int) $userId);
-                    $categoryMap = AiInvoiceExtractor::suggestCategories($productNames, $knownCategories);
+                    $categoryMap = $provider?->suggestCategories($productNames, $knownCategories);
                     if ($categoryMap !== null) {
                         foreach ($categoryMap as $idx => $category) {
                             $extracted['items'][$idx]['category'] = $category;

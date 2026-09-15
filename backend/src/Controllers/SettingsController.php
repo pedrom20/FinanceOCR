@@ -4,20 +4,30 @@ namespace FinanceOcr\Controllers;
 
 use FinanceOcr\Auth\AuthMiddleware;
 use FinanceOcr\Repositories\SettingsRepository;
+use FinanceOcr\Services\Ai\AiProviderFactory;
+use FinanceOcr\Services\Ai\AnthropicProvider;
 use FinanceOcr\Support\Response;
 
 class SettingsController
 {
-    private const ANTHROPIC_API_KEY = 'anthropic_api_key';
-    private const ANTHROPIC_MODEL = 'anthropic_model';
-
-    /** Nunca devolve o valor da chave já guardada — só se está ou não configurada. */
+    /** Nunca devolve os valores das chaves já guardadas — só se cada uma está ou não configurada. */
     public static function show(): void
     {
         AuthMiddleware::requireAdmin();
+
+        $providers = [];
+        foreach (AiProviderFactory::all() as $class) {
+            $providers[$class::key()] = [
+                'label' => $class::label(),
+                'configured' => SettingsRepository::get($class::key() . '_api_key') !== null,
+                'model' => SettingsRepository::get($class::key() . '_model') ?? '',
+                'defaultModel' => $class::defaultModel(),
+            ];
+        }
+
         Response::json([
-            'anthropicApiKeyConfigured' => SettingsRepository::get(self::ANTHROPIC_API_KEY) !== null,
-            'anthropicModel' => SettingsRepository::get(self::ANTHROPIC_MODEL) ?? '',
+            'activeProvider' => SettingsRepository::get('ai_provider') ?? AnthropicProvider::key(),
+            'providers' => $providers,
         ]);
     }
 
@@ -31,14 +41,26 @@ class SettingsController
             return;
         }
 
-        // Campo em branco = não mexer na chave já guardada (o formulário nunca
-        // mostra o valor atual, por isso "vazio" não pode significar "apagar").
-        if (isset($body['anthropicApiKey']) && trim((string) $body['anthropicApiKey']) !== '') {
-            SettingsRepository::set(self::ANTHROPIC_API_KEY, trim((string) $body['anthropicApiKey']));
+        $validKeys = array_map(fn ($class) => $class::key(), AiProviderFactory::all());
+        if (isset($body['activeProvider']) && in_array($body['activeProvider'], $validKeys, true)) {
+            SettingsRepository::set('ai_provider', $body['activeProvider']);
         }
-        if (isset($body['anthropicModel'])) {
-            $model = trim((string) $body['anthropicModel']);
-            SettingsRepository::set(self::ANTHROPIC_MODEL, $model !== '' ? $model : null);
+
+        foreach ($validKeys as $providerKey) {
+            $providerBody = $body[$providerKey] ?? null;
+            if (!is_array($providerBody)) {
+                continue;
+            }
+            // Campo em branco = não mexer na chave já guardada (o formulário
+            // nunca mostra o valor atual, por isso "vazio" não pode significar
+            // "apagar").
+            if (isset($providerBody['apiKey']) && trim((string) $providerBody['apiKey']) !== '') {
+                SettingsRepository::set($providerKey . '_api_key', trim((string) $providerBody['apiKey']));
+            }
+            if (isset($providerBody['model'])) {
+                $model = trim((string) $providerBody['model']);
+                SettingsRepository::set($providerKey . '_model', $model !== '' ? $model : null);
+            }
         }
 
         self::show();
