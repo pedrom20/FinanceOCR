@@ -7,7 +7,11 @@
       "Bash(brew services *)",
       "Bash(/opt/homebrew/opt/mysql/bin/mysqladmin ping *)",
       "Bash(mysqladmin ping *)",
-      "Bash(mysql -u root -e \"SELECT 1;\")"
+      "Bash(mysql -u root -e \"SELECT 1;\")",
+      "Bash(npx tsc --noEmit *)",
+      "Bash(php -l *)",
+      "Bash(systemctl is-active *)",
+      "Bash(apache2ctl configtest)"
     ]
   }
 }

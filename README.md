@@ -6,6 +6,7 @@ Gestão de faturas com OCR. Frontend em React/Vite, backend em PHP + MySQL — p
 
 - **Frontend** (`/`): React + TypeScript + Vite + Tailwind. Fala com o backend via `fetch` (`src/api.ts`), autenticado por JWT guardado em `localStorage`.
 - **Backend** (`backend/`): PHP 8.1+, MySQL via PDO, JWT próprio (`firebase/php-jwt`, apenas a biblioteca — sem dependência do serviço Firebase), OCR via `tesseract`/`pdftoppm` (linha de comandos), relatórios em PDF via DomPDF.
+- **OCR**: `InvoiceParser` (regex, grátis e local) tenta primeiro. Se o resultado parecer pouco fiável (sem NIF, sem itens, ou total 0) e `ANTHROPIC_API_KEY` estiver configurada, `AiInvoiceExtractor::extract()` envia a imagem do recibo a um modelo Claude com visão como fallback pago — só nesse caso, para manter o custo baixo. `AiInvoiceExtractor::suggestCategories()` (chamada de texto, bem mais barata) sugere uma categoria por artigo sempre que há itens, reaproveitando categorias já usadas pelo utilizador para agrupar o mesmo tipo de produto entre lojas/marcas diferentes. Sem a chave configurada, ambos ficam desativados e usa-se sempre só o parser local.
 
 ## Desenvolvimento local
 
