@@ -89,7 +89,7 @@ class AuthController
             Response::error('Utilizador não encontrado', 404);
             return;
         }
-        Response::json(['id' => (string) $user['id'], 'email' => $user['email'], 'name' => $user['name']]);
+        Response::json(['id' => (string) $user['id'], 'email' => $user['email'], 'name' => $user['name'], 'role' => $user['role']]);
     }
 
     private static function respondWithToken(array $user, int $status = 200): void
@@ -97,7 +97,7 @@ class AuthController
         $token = Jwt::issue((int) $user['id'], $user['email'], $user['name']);
         Response::json([
             'token' => $token,
-            'user' => ['id' => (string) $user['id'], 'email' => $user['email'], 'name' => $user['name']],
+            'user' => ['id' => (string) $user['id'], 'email' => $user['email'], 'name' => $user['name'], 'role' => $user['role']],
         ], $status);
     }
 

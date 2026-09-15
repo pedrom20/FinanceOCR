@@ -4,10 +4,17 @@ CREATE TABLE IF NOT EXISTS users (
   name           VARCHAR(255) NOT NULL DEFAULT '',
   password_hash  VARCHAR(255) NULL,
   google_id      VARCHAR(255) NULL,
+  role           VARCHAR(20) NOT NULL DEFAULT 'user',
   created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_users_email (email),
   UNIQUE KEY uq_users_google_id (google_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS app_settings (
+  setting_key    VARCHAR(100) PRIMARY KEY,
+  setting_value  TEXT NULL,
+  updated_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS invoices (

@@ -9,6 +9,7 @@ use FinanceOcr\Controllers\HealthController;
 use FinanceOcr\Controllers\InvoiceController;
 use FinanceOcr\Controllers\OcrController;
 use FinanceOcr\Controllers\ReportController;
+use FinanceOcr\Controllers\SettingsController;
 
 $router = new Router();
 
@@ -28,5 +29,8 @@ $router->get('/api/invoices/{id}', fn (array $params) => InvoiceController::show
 $router->get('/api/files/{fileName}', fn (array $params) => FileController::download($params));
 
 $router->get('/api/reports/pdf', fn () => ReportController::pdf());
+
+$router->get('/api/settings', fn () => SettingsController::show());
+$router->post('/api/settings', fn () => SettingsController::update());
 
 $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);

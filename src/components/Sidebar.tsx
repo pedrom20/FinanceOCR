@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, UploadCloud, FileText, PieChart, LogOut, Receipt, User as UserIcon } from 'lucide-react';
+import { LayoutDashboard, UploadCloud, FileText, PieChart, Settings, LogOut, Receipt, User as UserIcon } from 'lucide-react';
 import { User } from '../types';
 
 export const NAV_ITEMS = [
@@ -10,8 +10,11 @@ export const NAV_ITEMS = [
   { path: '/reports', label: 'Relatórios', icon: <PieChart size={20} /> },
 ];
 
+export const ADMIN_NAV_ITEM = { path: '/settings', label: 'Definições', icon: <Settings size={20} /> };
+
 export const Sidebar = ({ user, onLogout }: { user: User; onLogout: () => void }) => {
   const location = useLocation();
+  const items = user.role === 'admin' ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS;
 
   return (
     <div className="hidden md:flex flex-col w-64 bg-slate-900 text-white h-screen fixed">
@@ -20,7 +23,7 @@ export const Sidebar = ({ user, onLogout }: { user: User; onLogout: () => void }
         <span className="font-bold text-xl">FinOCR</span>
       </div>
       <nav className="flex-1 mt-6 px-4 space-y-2">
-        {NAV_ITEMS.map(item => (
+        {items.map(item => (
           <Link key={item.path} to={item.path} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${location.pathname === item.path ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             {item.icon}
             <span>{item.label}</span>

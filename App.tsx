@@ -10,6 +10,7 @@ import { InvoiceList } from './src/pages/InvoiceList';
 import { InvoiceDetail } from './src/pages/InvoiceDetail';
 import { InvoiceUpload } from './src/pages/InvoiceUpload';
 import { Reports } from './src/pages/Reports';
+import { AdminSettings } from './src/pages/AdminSettings';
 
 const AppShell = () => {
   const { user, loading, logout } = useAuth();
@@ -29,6 +30,7 @@ const AppShell = () => {
             <Route path="/invoices/:id" element={<InvoiceDetail />} />
             <Route path="/upload" element={<InvoiceUpload />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/settings" element={user.role === 'admin' ? <AdminSettings /> : <Navigate to="/" />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </main>

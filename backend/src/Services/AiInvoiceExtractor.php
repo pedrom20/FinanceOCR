@@ -3,6 +3,7 @@
 namespace FinanceOcr\Services;
 
 use FinanceOcr\Config;
+use FinanceOcr\Repositories\SettingsRepository;
 
 /**
  * Fallback for receipts the regex-based InvoiceParser can't handle (a format
@@ -17,6 +18,17 @@ class AiInvoiceExtractor
     private const ANTHROPIC_VERSION = '2023-06-01';
     private const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
     private const SUPPORTED_MEDIA_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+    /** Definido pela página de definições (admin) tem prioridade sobre o .env. */
+    private static function apiKey(): ?string
+    {
+        return SettingsRepository::get('anthropic_api_key') ?: Config::get('ANTHROPIC_API_KEY');
+    }
+
+    private static function model(): string
+    {
+        return SettingsRepository::get('anthropic_model') ?: Config::get('ANTHROPIC_MODEL', self::DEFAULT_MODEL);
+    }
 
     private const PROMPT = <<<'PROMPT'
 Extrai os dados desta fatura ou talão de compra português. Responde APENAS
@@ -62,7 +74,7 @@ PROMPT;
      */
     public static function extract(string $imagePath, string $mediaType): ?array
     {
-        $apiKey = Config::get('ANTHROPIC_API_KEY');
+        $apiKey = self::apiKey();
         if (!$apiKey) {
             return null;
         }
@@ -101,7 +113,7 @@ PROMPT;
      */
     public static function suggestCategories(array $productNames, array $knownCategories): ?array
     {
-        $apiKey = Config::get('ANTHROPIC_API_KEY');
+        $apiKey = self::apiKey();
         if (!$apiKey || empty($productNames)) {
             return null;
         }
@@ -136,7 +148,7 @@ PROMPT;
     private static function callMessagesApi(string $apiKey, array $content, int $maxTokens): string
     {
         $payload = [
-            'model' => Config::get('ANTHROPIC_MODEL', self::DEFAULT_MODEL),
+            'model' => self::model(),
             'max_tokens' => $maxTokens,
             'messages' => [['role' => 'user', 'content' => $content]],
         ];

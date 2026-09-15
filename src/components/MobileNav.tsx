@@ -1,13 +1,16 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { NAV_ITEMS } from './Sidebar';
+import { NAV_ITEMS, ADMIN_NAV_ITEM } from './Sidebar';
+import { useAuth } from '../auth/AuthContext';
 
 export const MobileNav = () => {
   const location = useLocation();
+  const { user } = useAuth();
+  const items = user?.role === 'admin' ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS;
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 flex z-50">
-      {NAV_ITEMS.map(item => {
+      {items.map(item => {
         const active = location.pathname === item.path;
         return (
           <Link

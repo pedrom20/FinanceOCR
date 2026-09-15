@@ -2,6 +2,7 @@
 
 namespace FinanceOcr\Auth;
 
+use FinanceOcr\Repositories\UserRepository;
 use FinanceOcr\Support\Response;
 
 class AuthMiddleware
@@ -21,6 +22,22 @@ class AuthMiddleware
             exit;
         }
 
+        return $payload;
+    }
+
+    /**
+     * Como authenticate(), mas exige role=admin. O papel vem sempre da BD (não
+     * do JWT), para que uma alteração de role tenha efeito imediato em vez de
+     * só depois do token expirar.
+     */
+    public static function requireAdmin(): array
+    {
+        $payload = self::authenticate();
+        $user = UserRepository::findById((int) $payload['sub']);
+        if (!$user || $user['role'] !== 'admin') {
+            Response::error('Acesso restrito a administradores', 403);
+            exit;
+        }
         return $payload;
     }
 
