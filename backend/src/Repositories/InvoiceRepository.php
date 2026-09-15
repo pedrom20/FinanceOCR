@@ -115,6 +115,33 @@ class InvoiceRepository
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
+    /**
+     * Renomeia a loja. Se $applyToAllWithNif e a fatura tiver NIF, aplica a
+     * TODAS as faturas deste utilizador com esse NIF (ex: corrigir "LIDL &
+     * Cia - ODEMIRA" para "Lidl" em todas as filiais já guardadas), não só
+     * nesta fatura — devolve o número de faturas atualizadas, ou null se a
+     * fatura não existir/não pertencer a este utilizador.
+     */
+    public static function renameStore(int $userId, int $invoiceId, string $newName, bool $applyToAllWithNif): ?int
+    {
+        $db = Database::get();
+        $stmt = $db->prepare('SELECT store_nif FROM invoices WHERE id = ? AND user_id = ?');
+        $stmt->execute([$invoiceId, $userId]);
+        $row = $stmt->fetch();
+        if ($row === false) {
+            return null;
+        }
+
+        if ($applyToAllWithNif && $row['store_nif'] !== '') {
+            $stmt = $db->prepare('UPDATE invoices SET store_name = ? WHERE user_id = ? AND store_nif = ?');
+            $stmt->execute([$newName, $userId, $row['store_nif']]);
+        } else {
+            $stmt = $db->prepare('UPDATE invoices SET store_name = ? WHERE id = ? AND user_id = ?');
+            $stmt->execute([$newName, $invoiceId, $userId]);
+        }
+        return $stmt->rowCount();
+    }
+
     /** true se a fatura existia e pertencia a este utilizador (e foi apagada). Os artigos vão com ela (ON DELETE CASCADE). */
     public static function deleteForUser(int $userId, int $invoiceId): bool
     {

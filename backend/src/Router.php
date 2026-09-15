@@ -24,6 +24,11 @@ class Router
         $this->add('DELETE', $path, $handler);
     }
 
+    public function put(string $path, callable $handler): void
+    {
+        $this->add('PUT', $path, $handler);
+    }
+
     private function add(string $method, string $path, callable $handler): void
     {
         $paramNames = [];

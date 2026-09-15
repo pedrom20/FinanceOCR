@@ -26,6 +26,7 @@ $router->post('/api/invoices', fn () => InvoiceController::create());
 $router->get('/api/invoices', fn () => InvoiceController::list());
 $router->get('/api/invoices/{id}', fn (array $params) => InvoiceController::show($params));
 $router->delete('/api/invoices/{id}', fn (array $params) => InvoiceController::destroy($params));
+$router->put('/api/invoices/{id}/store', fn (array $params) => InvoiceController::renameStore($params));
 
 $router->get('/api/files/{fileName}', fn (array $params) => FileController::download($params));
 

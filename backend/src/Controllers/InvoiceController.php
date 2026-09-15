@@ -56,6 +56,28 @@ class InvoiceController
         Response::json($invoice);
     }
 
+    public static function renameStore(array $params): void
+    {
+        $payload = AuthMiddleware::authenticate();
+        $userId = (int) $payload['sub'];
+        $invoiceId = (int) $params['id'];
+
+        $body = json_decode((string) file_get_contents('php://input'), true);
+        $newName = trim((string) ($body['storeName'] ?? ''));
+        if ($newName === '') {
+            Response::error('Nome da loja inválido', 400);
+            return;
+        }
+        $applyToAll = !empty($body['applyToAllWithNif']);
+
+        $updated = InvoiceRepository::renameStore($userId, $invoiceId, $newName, $applyToAll);
+        if ($updated === null) {
+            Response::error('Fatura não encontrada', 404);
+            return;
+        }
+        Response::json(['updatedCount' => $updated]);
+    }
+
     public static function destroy(array $params): void
     {
         $payload = AuthMiddleware::authenticate();

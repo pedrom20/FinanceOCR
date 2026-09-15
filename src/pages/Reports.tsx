@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { PieChart, Download, Loader2, Filter } from 'lucide-react';
+import { PieChart, Download, Loader2, Filter, ChevronDown, ChevronRight } from 'lucide-react';
 import { apiFetch, apiJson } from '../api';
 
 interface ReportItem {
@@ -22,6 +22,29 @@ interface FiltersResponse {
   categories: string[];
 }
 
+interface GroupedItem {
+  productName: string;
+  category?: string;
+  count: number;
+  totalSpent: number;
+  occurrences: ReportItem[];
+}
+
+function groupByProduct(items: ReportItem[]): GroupedItem[] {
+  const map = new Map<string, GroupedItem>();
+  for (const item of items) {
+    let group = map.get(item.productName);
+    if (!group) {
+      group = { productName: item.productName, category: item.category, count: 0, totalSpent: 0, occurrences: [] };
+      map.set(item.productName, group);
+    }
+    group.count += 1;
+    group.totalSpent += item.totalPrice;
+    group.occurrences.push(item);
+  }
+  return Array.from(map.values()).sort((a, b) => b.totalSpent - a.totalSpent);
+}
+
 function formatQuantity(quantity: number, unit?: string): string {
   if (unit === 'kg') {
     return `${quantity.toFixed(3).replace(/\.?0+$/, '')} kg`;
@@ -41,6 +64,16 @@ export const Reports = () => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const groups = useMemo(() => groupByProduct(items), [items]);
+  const toggleExpanded = (productName: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      next.has(productName) ? next.delete(productName) : next.add(productName);
+      return next;
+    });
+  };
 
   useEffect(() => {
     apiJson<FiltersResponse>('/api/reports/filters')
@@ -149,58 +182,47 @@ export const Reports = () => {
           <div className="flex justify-center py-6"><Loader2 className="animate-spin text-emerald-500" size={24} /></div>
         )}
 
-        {!loading && items.length > 0 && (
-          <div className="pb-4 sm:pb-6">
-            {/* Mobile: cartões. Desktop: tabela. */}
-            <div className="space-y-2 px-4 sm:hidden">
-              {items.map((item, idx) => (
-                <Link key={idx} to={`/invoices/${item.invoiceId}`} className="block border border-slate-100 rounded-xl p-3 active:bg-slate-50">
-                  <div className="flex justify-between gap-3">
-                    <span className="font-semibold text-slate-700 text-sm">{item.productName}</span>
-                    <span className="font-bold text-slate-800 text-sm shrink-0">{item.totalPrice.toFixed(2)} €</span>
-                  </div>
-                  <div className="mt-1 text-xs text-slate-400 flex flex-wrap gap-x-3 gap-y-1">
-                    <span>{item.invoiceDate}</span>
-                    <span>{item.storeName}</span>
-                    <span>{formatQuantity(item.quantity, item.quantityUnit)}</span>
-                    {item.category && <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">{item.category}</span>}
-                  </div>
-                </Link>
-              ))}
-            </div>
+        {!loading && groups.length > 0 && (
+          <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-2">
+            {groups.map(group => {
+              const isOpen = expanded.has(group.productName);
+              return (
+                <div key={group.productName} className="border border-slate-100 rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => toggleExpanded(group.productName)}
+                    className="w-full flex items-center gap-3 p-3 text-left hover:bg-slate-50"
+                  >
+                    {isOpen ? <ChevronDown size={16} className="text-slate-400 shrink-0" /> : <ChevronRight size={16} className="text-slate-400 shrink-0" />}
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-slate-700 text-sm truncate">{group.productName}</div>
+                      <div className="mt-0.5 text-xs text-slate-400 flex flex-wrap gap-x-3 gap-y-1">
+                        <span>{group.count} compra{group.count !== 1 ? 's' : ''}</span>
+                        {group.category && <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">{group.category}</span>}
+                      </div>
+                    </div>
+                    <span className="font-bold text-slate-800 text-sm shrink-0">{group.totalSpent.toFixed(2)} €</span>
+                  </button>
 
-            <div className="hidden sm:block overflow-x-auto px-6">
-              <table className="w-full text-left border-collapse text-sm">
-                <thead>
-                  <tr className="text-slate-400 uppercase text-xs">
-                    <th className="py-2 pr-2">Data</th>
-                    <th className="py-2 px-2">Loja</th>
-                    <th className="py-2 px-2">Artigo</th>
-                    <th className="py-2 px-2">Categoria</th>
-                    <th className="py-2 px-2 text-right">Quantidade</th>
-                    <th className="py-2 pl-2 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {items.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50">
-                      <td className="py-2.5 pr-2 text-slate-500">
-                        <Link to={`/invoices/${item.invoiceId}`} className="hover:text-emerald-600">{item.invoiceDate}</Link>
-                      </td>
-                      <td className="py-2.5 px-2 text-slate-600">{item.storeName}</td>
-                      <td className="py-2.5 px-2 font-semibold text-slate-700">{item.productName}</td>
-                      <td className="py-2.5 px-2">
-                        {item.category && (
-                          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs">{item.category}</span>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-2 text-right text-slate-500">{formatQuantity(item.quantity, item.quantityUnit)}</td>
-                      <td className="py-2.5 pl-2 text-right font-bold text-slate-800">{item.totalPrice.toFixed(2)} €</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  {isOpen && (
+                    <div className="divide-y divide-slate-100 border-t border-slate-100 bg-slate-50">
+                      {group.occurrences.map((item, idx) => (
+                        <Link
+                          key={idx}
+                          to={`/invoices/${item.invoiceId}`}
+                          className="flex items-center justify-between gap-3 px-3 py-2.5 pl-8 text-sm hover:bg-white"
+                        >
+                          <div className="min-w-0">
+                            <div className="text-slate-600 truncate">{item.storeName}</div>
+                            <div className="text-xs text-slate-400">{item.invoiceDate} · {formatQuantity(item.quantity, item.quantityUnit)} × {item.unitPrice.toFixed(2)} €{item.quantityUnit === 'kg' ? '/kg' : ''}</div>
+                          </div>
+                          <span className="font-semibold text-slate-700 shrink-0">{item.totalPrice.toFixed(2)} €</span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
