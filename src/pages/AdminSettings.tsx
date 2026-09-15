@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, Save, ShieldCheck } from 'lucide-react';
+import { ExternalLink, Loader2, Save, ShieldCheck } from 'lucide-react';
 import { apiJson, ApiError } from '../api';
 
 interface ProviderInfo {
@@ -8,6 +8,21 @@ interface ProviderInfo {
   model: string;
   defaultModel: string;
 }
+
+const PROVIDER_HELP: Record<string, { url: string; steps: string }> = {
+  anthropic: {
+    url: 'https://console.anthropic.com/settings/keys',
+    steps: 'console.anthropic.com → inicia sessão → Settings → API Keys → Create Key',
+  },
+  openai: {
+    url: 'https://platform.openai.com/api-keys',
+    steps: 'platform.openai.com/api-keys → inicia sessão → Create new secret key',
+  },
+  google: {
+    url: 'https://aistudio.google.com/apikey',
+    steps: 'aistudio.google.com/apikey → inicia sessão com uma conta Google → Create API key',
+  },
+};
 
 interface SettingsResponse {
   activeProvider: string;
@@ -93,6 +108,17 @@ export const AdminSettings = () => {
               </label>
 
               <div className="pl-7 space-y-3">
+                {PROVIDER_HELP[key] && (
+                  <a
+                    href={PROVIDER_HELP[key].url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700"
+                  >
+                    <ExternalLink size={12} />
+                    Como obter: {PROVIDER_HELP[key].steps}
+                  </a>
+                )}
                 <div>
                   <label className="text-xs font-bold text-slate-400 uppercase">Chave API</label>
                   <input
