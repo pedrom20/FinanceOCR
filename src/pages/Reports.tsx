@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { PieChart, Download, Loader2, Filter, ChevronDown, ChevronRight } from 'lucide-react';
-import { apiFetch, apiJson } from '../api';
+import { PieChart, Download, Loader2, Filter, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
+import { apiFetch, apiJson, ApiError } from '../api';
 
 interface ReportItem {
   invoiceId: string;
@@ -65,6 +65,9 @@ export const Reports = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [categorizing, setCategorizing] = useState(false);
+  const [categorizeResult, setCategorizeResult] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
   const groups = useMemo(() => groupByProduct(items), [items]);
   const toggleExpanded = (productName: string) => {
@@ -79,7 +82,7 @@ export const Reports = () => {
     apiJson<FiltersResponse>('/api/reports/filters')
       .then(setFilterOptions)
       .catch(() => {});
-  }, []);
+  }, [reloadKey]);
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -101,7 +104,21 @@ export const Reports = () => {
         .finally(() => setLoading(false));
     }, 300);
     return () => clearTimeout(handle);
-  }, [store, category, search, dateFrom, dateTo]);
+  }, [store, category, search, dateFrom, dateTo, reloadKey]);
+
+  const categorizeMissing = async () => {
+    setCategorizing(true);
+    setCategorizeResult('');
+    try {
+      const result = await apiJson<{ updated: number; total: number }>('/api/invoices/categorize-missing', { method: 'POST' });
+      setCategorizeResult(result.total === 0 ? 'Não há artigos por categorizar.' : `${result.updated} de ${result.total} artigos categorizados.`);
+      setReloadKey(k => k + 1);
+    } catch (err) {
+      setCategorizeResult(err instanceof ApiError ? err.message : 'Falha ao categorizar.');
+    } finally {
+      setCategorizing(false);
+    }
+  };
 
   const downloadPdf = async () => {
     setDownloading(true);
@@ -138,9 +155,22 @@ export const Reports = () => {
       </div>
 
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-4 sm:p-6 bg-slate-50 border-b flex items-center gap-2">
-          <Filter size={18} className="text-slate-400" />
-          <h3 className="font-bold text-slate-800">Filtrar Despesas</h3>
+        <div className="p-4 sm:p-6 bg-slate-50 border-b flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Filter size={18} className="text-slate-400" />
+            <h3 className="font-bold text-slate-800">Filtrar Despesas</h3>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={categorizeMissing}
+              disabled={categorizing}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-emerald-600 disabled:opacity-40 border border-slate-200 rounded-lg px-3 py-1.5"
+            >
+              {categorizing ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />}
+              {categorizing ? 'A categorizar...' : 'Categorizar artigos em falta'}
+            </button>
+            {categorizeResult && <span className="text-xs text-slate-500">{categorizeResult}</span>}
+          </div>
         </div>
 
         <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">

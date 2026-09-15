@@ -2,6 +2,8 @@
 
 namespace FinanceOcr\Services\Ai;
 
+use FinanceOcr\Services\InvoiceParser;
+
 /**
  * Prompts e parsing de resposta partilhados entre fornecedores — cada
  * fornecedor só implementa a chamada HTTP específica da sua API (o formato
@@ -139,7 +141,7 @@ PROMPT;
                 continue;
             }
             $items[] = [
-                'productName' => (string) $item['productName'],
+                'productName' => InvoiceParser::toDisplayCase((string) $item['productName']),
                 'quantity' => (float) ($item['quantity'] ?? 1),
                 'quantityUnit' => 'un',
                 'unitPrice' => (float) ($item['unitPrice'] ?? 0),

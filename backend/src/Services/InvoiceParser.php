@@ -165,7 +165,7 @@ class InvoiceParser
                 if ($lettersInName >= 3 && $price > 0 && $price < 10000) {
                     $vatLetter = $itemMatch[3] ?? '';
                     $result['items'][] = [
-                        'productName' => $productName,
+                        'productName' => self::toDisplayCase($productName),
                         'quantity' => 1,
                         'quantityUnit' => 'un',
                         'unitPrice' => $price,
@@ -214,5 +214,32 @@ class InvoiceParser
         }
 
         return $result;
+    }
+
+    /**
+     * Talões costumam imprimir os artigos todo em maiúsculas (ex: "MINI BOLA
+     * BERLIM AVEL LEITE"), o que fica feio a mostrar na app — reformata para
+     * capitalização normal. Só mexe em nomes que a OCR devolveu 100% em
+     * maiúsculas; um nome que já tem minúsculas presume-se correto tal como
+     * veio (ex: marcas com capitalização interna propositada).
+     */
+    public static function toDisplayCase(string $name): string
+    {
+        if ($name === '' || $name !== mb_strtoupper($name, 'UTF-8')) {
+            return $name;
+        }
+
+        $titled = mb_convert_case(mb_strtolower($name, 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
+
+        // Preposições/artigos curtos ficam em minúscula quando não são a
+        // primeira palavra (ex: "Pao De Forma" -> "Pao de Forma").
+        $lowerWords = ['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'com', 'para', 'a', 'o', 'as', 'os'];
+        $words = explode(' ', $titled);
+        foreach ($words as $i => $word) {
+            if ($i > 0 && in_array(mb_strtolower($word, 'UTF-8'), $lowerWords, true)) {
+                $words[$i] = mb_strtolower($word, 'UTF-8');
+            }
+        }
+        return implode(' ', $words);
     }
 }

@@ -11,6 +11,28 @@ function formatQuantity(quantity: number, unit?: string): string {
   return `${quantity} un`;
 }
 
+interface VatBreakdownRow {
+  rate: number;
+  base: number;
+  vat: number;
+  total: number;
+}
+
+/** Reconstrói a tabela "Taxa / Base Imp. / Val.Total / Val.IVA" que o talão original mostra, a partir do IVA por artigo. */
+function vatBreakdown(items: InvoiceItem[]): VatBreakdownRow[] {
+  const totals = new Map<number, number>();
+  for (const item of items) {
+    if (item.vatRate == null) continue;
+    totals.set(item.vatRate, (totals.get(item.vatRate) ?? 0) + item.totalPrice);
+  }
+  return Array.from(totals.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([rate, total]) => {
+      const base = total / (1 + rate / 100);
+      return { rate, base, vat: total - base, total };
+    });
+}
+
 export const InvoiceDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -217,7 +239,7 @@ export const InvoiceDetail = () => {
           </div>
           <div className="text-right">
             <p className="text-3xl font-black text-emerald-600">{invoice.totalAmount.toFixed(2)} €</p>
-            <p className="text-xs text-slate-400">{invoice.invoiceDate} · {invoice.paymentMethod}</p>
+            <p className="text-xs text-slate-400">{invoice.invoiceDate}</p>
           </div>
         </div>
 
@@ -285,6 +307,38 @@ export const InvoiceDetail = () => {
             </div>
           </div>
         )}
+
+        {/* Como no talão original: tabela de IVA por taxa, depois o método de pagamento. */}
+        {invoice.items && invoice.items.length > 0 && vatBreakdown(invoice.items).length > 0 && (
+          <div className="px-4 sm:px-6 pb-4 sm:pb-6">
+            <h2 className="text-xs font-bold text-slate-400 uppercase mb-3">IVA</h2>
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="text-slate-400 uppercase text-xs">
+                  <th className="py-1 pr-2">Taxa</th>
+                  <th className="py-1 px-2 text-right">Base Imp.</th>
+                  <th className="py-1 px-2 text-right">Val. IVA</th>
+                  <th className="py-1 pl-2 text-right">Val. Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {vatBreakdown(invoice.items).map(row => (
+                  <tr key={row.rate}>
+                    <td className="py-1.5 pr-2 text-slate-600">{row.rate}%</td>
+                    <td className="py-1.5 px-2 text-right text-slate-500">{row.base.toFixed(2)} €</td>
+                    <td className="py-1.5 px-2 text-right text-slate-500">{row.vat.toFixed(2)} €</td>
+                    <td className="py-1.5 pl-2 text-right text-slate-700">{row.total.toFixed(2)} €</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="p-4 sm:p-6 border-t bg-slate-50 flex items-center justify-between">
+          <span className="font-bold text-slate-800">{invoice.paymentMethod}</span>
+          <span className="text-xl font-black text-emerald-600">{invoice.totalAmount.toFixed(2)} €</span>
+        </div>
       </div>
 
       <datalist id="category-options">

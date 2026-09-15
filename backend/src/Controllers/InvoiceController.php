@@ -5,6 +5,7 @@ namespace FinanceOcr\Controllers;
 use FinanceOcr\Auth\AuthMiddleware;
 use FinanceOcr\Config;
 use FinanceOcr\Repositories\InvoiceRepository;
+use FinanceOcr\Services\Ai\AiProviderFactory;
 use FinanceOcr\Support\Response;
 
 class InvoiceController
@@ -92,6 +93,58 @@ class InvoiceController
             return;
         }
         Response::json(['category' => $category]);
+    }
+
+    /**
+     * Categoriza em lote todos os artigos deste utilizador que ainda não têm
+     * categoria (ex: faturas guardadas antes da sugestão de IA existir, ou
+     * de quando ainda não havia nenhum fornecedor configurado).
+     */
+    public static function categorizeMissing(): void
+    {
+        $payload = AuthMiddleware::authenticate();
+        $userId = (int) $payload['sub'];
+
+        $provider = AiProviderFactory::current();
+        if ($provider === null) {
+            Response::error('Nenhum fornecedor de IA configurado nas definições', 400);
+            return;
+        }
+
+        $items = InvoiceRepository::findItemsWithoutCategory($userId);
+        if (empty($items)) {
+            Response::json(['updated' => 0, 'total' => 0]);
+            return;
+        }
+
+        $knownCategories = InvoiceRepository::listCategoriesForUser($userId);
+        $updated = 0;
+        foreach (array_chunk($items, 30) as $chunk) {
+            $names = array_column($chunk, 'product_name');
+            try {
+                $categoryMap = $provider->suggestCategories($names, $knownCategories);
+            } catch (\Throwable $e) {
+                error_log('Falha ao categorizar em lote: ' . $e->getMessage());
+                continue;
+            }
+            if ($categoryMap === null) {
+                continue;
+            }
+            foreach ($categoryMap as $idx => $category) {
+                if (!isset($chunk[$idx])) {
+                    continue;
+                }
+                $ok = InvoiceRepository::updateItemCategory($userId, (int) $chunk[$idx]['invoice_id'], (int) $chunk[$idx]['id'], $category);
+                if ($ok) {
+                    $updated++;
+                    if (!in_array($category, $knownCategories, true)) {
+                        $knownCategories[] = $category;
+                    }
+                }
+            }
+        }
+
+        Response::json(['updated' => $updated, 'total' => count($items)]);
     }
 
     public static function destroy(array $params): void

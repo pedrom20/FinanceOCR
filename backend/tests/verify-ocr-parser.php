@@ -32,7 +32,7 @@ $failures += !assertField('totalAmount', $market['totalAmount'], 11.63);
 $failures += !assertField('invoiceDate', $market['invoiceDate'], '2026-07-22');
 $failures += !assertField('items count', count($market['items']), 4);
 if (count($market['items']) === 4) {
-    $failures += !assertField('item[0].productName', $market['items'][0]['productName'], 'PAO DE FORMA BIMBO');
+    $failures += !assertField('item[0].productName', $market['items'][0]['productName'], 'Pao de Forma Bimbo');
     $failures += !assertField('item[0].unitPrice', $market['items'][0]['unitPrice'], 1.99);
 }
 
@@ -47,12 +47,12 @@ $failures += !assertField('invoiceDate', $lidl['invoiceDate'], '2026-09-08');
 $failures += !assertField('paymentMethod', $lidl['paymentMethod'], 'Multibanco');
 $failures += !assertField('items count', count($lidl['items']), 6);
 if (count($lidl['items']) === 6) {
-    $failures += !assertField('item[0].productName', $lidl['items'][0]['productName'], 'LIMAO');
+    $failures += !assertField('item[0].productName', $lidl['items'][0]['productName'], 'Limao');
     $failures += !assertField('item[0].unitPrice (EUR/kg)', $lidl['items'][0]['unitPrice'], 2.49);
     $failures += !assertField('item[0].quantity (kg)', $lidl['items'][0]['quantity'], 0.458);
     $failures += !assertField('item[0].quantityUnit', $lidl['items'][0]['quantityUnit'], 'kg');
     $failures += !assertField('item[0].vatRate', $lidl['items'][0]['vatRate'], 6.0);
-    $failures += !assertField('item[1].productName', $lidl['items'][1]['productName'], 'AGUA OXIGENADA 10 VOL.');
+    $failures += !assertField('item[1].productName', $lidl['items'][1]['productName'], 'Agua Oxigenada 10 Vol.');
     $failures += !assertField('item[1].quantityUnit', $lidl['items'][1]['quantityUnit'], 'un');
     $failures += !assertField('item[1].vatRate', $lidl['items'][1]['vatRate'], 23.0);
 }
@@ -78,9 +78,15 @@ if (count($discount['items']) === 20) {
     // de ser reconhecido como o seu próprio artigo, não fundido com o anterior.
     $failures += !assertField('item[6].productName', $discount['items'][6]['productName'], 'AGUA 0,89 x2');
     $failures += !assertField('item[6].totalPrice', $discount['items'][6]['totalPrice'], 1.6);
-    $failures += !assertField('item[5].productName (MORANGO, não deve levar o desconto da AGUA)', $discount['items'][5]['productName'], 'MORANGO 500 G');
+    $failures += !assertField('item[5].productName (MORANGO, não deve levar o desconto da AGUA)', $discount['items'][5]['productName'], 'Morango 500 G');
     $failures += !assertField('item[5].totalPrice', $discount['items'][5]['totalPrice'], 1.79);
 }
+
+echo "\n--- InvoiceParser::toDisplayCase ---\n";
+$failures += !assertField('nome todo em maiúsculas', InvoiceParser::toDisplayCase('MINI BOLA BERLIM AVEL LEITE'), 'Mini Bola Berlim Avel Leite');
+$failures += !assertField('preposição no meio fica em minúscula', InvoiceParser::toDisplayCase('BATATA PRONTA A COZINHAR'), 'Batata Pronta a Cozinhar');
+$failures += !assertField('já tem minúsculas, não mexe', InvoiceParser::toDisplayCase('Gelado Remoinho CookieCream'), 'Gelado Remoinho CookieCream');
+$failures += !assertField('nome com número/símbolo preservado', InvoiceParser::toDisplayCase('AGUA OXIGENADA 10 VOL.'), 'Agua Oxigenada 10 Vol.');
 
 echo "\n" . ($failures === 0 ? "ALL PASSED\n" : "{$failures} FAILURE(S)\n");
 exit($failures === 0 ? 0 : 1);

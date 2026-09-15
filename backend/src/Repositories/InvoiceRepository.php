@@ -167,6 +167,19 @@ class InvoiceRepository
         return $stmt->rowCount() > 0;
     }
 
+    /** Artigos deste utilizador ainda sem categoria, para o "categorizar em falta" em lote. */
+    public static function findItemsWithoutCategory(int $userId): array
+    {
+        $stmt = Database::get()->prepare(
+            "SELECT ii.id, ii.invoice_id, ii.product_name FROM invoice_items ii
+             JOIN invoices i ON i.id = ii.invoice_id
+             WHERE i.user_id = ? AND ii.category = ''
+             ORDER BY ii.id"
+        );
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll();
+    }
+
     /** Nomes de loja distintos deste utilizador, para o dropdown de filtro do relatório. */
     public static function listDistinctStores(int $userId): array
     {

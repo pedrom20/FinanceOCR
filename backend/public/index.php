@@ -23,6 +23,7 @@ $router->get('/api/auth/me', fn () => AuthController::me());
 $router->post('/api/ocr/process-invoice', fn () => OcrController::processInvoice());
 
 $router->post('/api/invoices', fn () => InvoiceController::create());
+$router->post('/api/invoices/categorize-missing', fn () => InvoiceController::categorizeMissing());
 $router->get('/api/invoices', fn () => InvoiceController::list());
 $router->get('/api/invoices/{id}', fn (array $params) => InvoiceController::show($params));
 $router->delete('/api/invoices/{id}', fn (array $params) => InvoiceController::destroy($params));
