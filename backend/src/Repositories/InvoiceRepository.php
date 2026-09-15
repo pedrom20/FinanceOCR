@@ -115,6 +115,14 @@ class InvoiceRepository
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
+    /** true se a fatura existia e pertencia a este utilizador (e foi apagada). Os artigos vão com ela (ON DELETE CASCADE). */
+    public static function deleteForUser(int $userId, int $invoiceId): bool
+    {
+        $stmt = Database::get()->prepare('DELETE FROM invoices WHERE id = ? AND user_id = ?');
+        $stmt->execute([$invoiceId, $userId]);
+        return $stmt->rowCount() > 0;
+    }
+
     /** Nomes de loja distintos deste utilizador, para o dropdown de filtro do relatório. */
     public static function listDistinctStores(int $userId): array
     {

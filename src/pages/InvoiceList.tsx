@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, Download } from 'lucide-react';
+import { ChevronRight, Download, Trash2 } from 'lucide-react';
 import { apiFetch, apiJson } from '../api';
 import { Invoice } from '../types';
 
@@ -29,6 +29,18 @@ export const InvoiceList = () => {
     }
   };
 
+  const deleteInvoice = async (id: string, storeName: string) => {
+    if (!window.confirm(`Apagar a fatura de "${storeName}"? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+    try {
+      await apiFetch(`/api/invoices/${id}`, { method: 'DELETE' });
+      setInvoices(prev => prev.filter(inv => inv.id !== id));
+    } catch (err) {
+      alert('Erro ao apagar fatura.');
+    }
+  };
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold text-slate-800">Histórico de Compras</h1>
@@ -37,25 +49,29 @@ export const InvoiceList = () => {
       {/* Mobile: cartões, uma coluna. Desktop: tabela. */}
       <div className="space-y-3 md:hidden">
         {invoices.map(inv => (
-          <Link
-            key={inv.id}
-            to={`/invoices/${inv.id}`}
-            className="block bg-white rounded-2xl shadow-sm border border-slate-100 p-4 active:bg-slate-50"
-          >
-            <div className="flex justify-between items-start gap-3">
-              <div className="min-w-0">
-                <div className="font-bold text-slate-700 truncate">{inv.storeName}</div>
-                {inv.storeLocation && inv.storeLocation !== inv.storeName && (
-                  <div className="text-xs text-slate-400 truncate">{inv.storeLocation}</div>
-                )}
-                <div className="text-xs text-slate-400 mt-1">{inv.invoiceDate}</div>
+          <div key={inv.id} className="flex items-stretch bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <Link to={`/invoices/${inv.id}`} className="flex-1 min-w-0 p-4 active:bg-slate-50">
+              <div className="flex justify-between items-start gap-3">
+                <div className="min-w-0">
+                  <div className="font-bold text-slate-700 truncate">{inv.storeName}</div>
+                  {inv.storeLocation && inv.storeLocation !== inv.storeName && (
+                    <div className="text-xs text-slate-400 truncate">{inv.storeLocation}</div>
+                  )}
+                  <div className="text-xs text-slate-400 mt-1">{inv.invoiceDate}</div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="font-black text-emerald-600">{inv.totalAmount.toFixed(2)} €</span>
+                  <ChevronRight size={18} className="text-slate-300" />
+                </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="font-black text-emerald-600">{inv.totalAmount.toFixed(2)} €</span>
-                <ChevronRight size={18} className="text-slate-300" />
-              </div>
-            </div>
-          </Link>
+            </Link>
+            <button
+              onClick={() => deleteInvoice(inv.id, inv.storeName)}
+              className="px-4 flex items-center border-l border-slate-100 text-slate-300 hover:text-red-500 active:bg-slate-50"
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
         ))}
       </div>
 
@@ -88,10 +104,16 @@ export const InvoiceList = () => {
                     </button>
                   )}
                 </td>
-                <td className="px-6 py-4 text-right">
+                <td className="px-6 py-4 text-right whitespace-nowrap">
                   <Link to={`/invoices/${inv.id}`} className="text-slate-400 hover:text-emerald-600 text-sm font-semibold">
                     Ver detalhes
                   </Link>
+                  <button
+                    onClick={() => deleteInvoice(inv.id, inv.storeName)}
+                    className="ml-4 text-slate-300 hover:text-red-500 align-middle"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </td>
               </tr>
             ))}

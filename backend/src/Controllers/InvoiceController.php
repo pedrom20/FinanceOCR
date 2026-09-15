@@ -3,6 +3,7 @@
 namespace FinanceOcr\Controllers;
 
 use FinanceOcr\Auth\AuthMiddleware;
+use FinanceOcr\Config;
 use FinanceOcr\Repositories\InvoiceRepository;
 use FinanceOcr\Support\Response;
 
@@ -53,5 +54,32 @@ class InvoiceController
             return;
         }
         Response::json($invoice);
+    }
+
+    public static function destroy(array $params): void
+    {
+        $payload = AuthMiddleware::authenticate();
+        $userId = (int) $payload['sub'];
+        $invoiceId = (int) $params['id'];
+
+        // Busca primeiro para saber se existe/pertence ao utilizador e para
+        // obter o fileName a apagar do disco — deleteForUser() só confirma
+        // que apagou uma linha, não devolve os dados que já desapareceram.
+        $invoice = InvoiceRepository::findByIdForUser($userId, $invoiceId);
+        if ($invoice === null) {
+            Response::error('Fatura não encontrada', 404);
+            return;
+        }
+
+        InvoiceRepository::deleteForUser($userId, $invoiceId);
+
+        if (!empty($invoice['fileName'])) {
+            $path = Config::uploadsDir() . '/' . $userId . '/' . basename($invoice['fileName']);
+            if (file_exists($path)) {
+                @unlink($path);
+            }
+        }
+
+        Response::json(['deleted' => true]);
     }
 }

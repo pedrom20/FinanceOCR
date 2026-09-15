@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Download } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Download, Trash2 } from 'lucide-react';
 import { apiFetch, apiJson } from '../api';
 import { Invoice } from '../types';
 
@@ -13,8 +13,10 @@ function formatQuantity(quantity: number, unit?: string): string {
 
 export const InvoiceDetail = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [error, setError] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     apiJson<Invoice>(`/api/invoices/${id}`)
@@ -37,14 +39,38 @@ export const InvoiceDetail = () => {
     }
   };
 
+  const deleteInvoice = async () => {
+    if (!invoice) return;
+    if (!window.confirm(`Apagar a fatura de "${invoice.storeName}"? Esta ação não pode ser desfeita.`)) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await apiFetch(`/api/invoices/${invoice.id}`, { method: 'DELETE' });
+      navigate('/invoices');
+    } catch (err) {
+      alert('Erro ao apagar fatura.');
+      setDeleting(false);
+    }
+  };
+
   if (error) return <p className="text-red-500 text-sm">{error}</p>;
   if (!invoice) return null;
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
-      <Link to="/invoices" className="inline-flex items-center gap-2 text-slate-500 hover:text-emerald-600 text-sm">
-        <ArrowLeft size={16} /> Voltar às faturas
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link to="/invoices" className="inline-flex items-center gap-2 text-slate-500 hover:text-emerald-600 text-sm">
+          <ArrowLeft size={16} /> Voltar às faturas
+        </Link>
+        <button
+          onClick={deleteInvoice}
+          disabled={deleting}
+          className="inline-flex items-center gap-2 text-sm text-red-500 hover:text-red-600 disabled:opacity-50"
+        >
+          <Trash2 size={16} /> {deleting ? 'A apagar...' : 'Apagar fatura'}
+        </button>
+      </div>
 
       <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-slate-100">
         <div className="p-4 sm:p-6 bg-slate-50 border-b flex flex-wrap items-start justify-between gap-3">
