@@ -7,9 +7,40 @@ use Dompdf\Options;
 use FinanceOcr\Auth\AuthMiddleware;
 use FinanceOcr\Repositories\InvoiceRepository;
 use FinanceOcr\Repositories\UserRepository;
+use FinanceOcr\Support\Response;
 
 class ReportController
 {
+    public static function filters(): void
+    {
+        $payload = AuthMiddleware::authenticate();
+        $userId = (int) $payload['sub'];
+
+        Response::json([
+            'stores' => InvoiceRepository::listDistinctStores($userId),
+            'categories' => InvoiceRepository::listCategoriesForUser($userId),
+        ]);
+    }
+
+    public static function items(): void
+    {
+        $payload = AuthMiddleware::authenticate();
+        $userId = (int) $payload['sub'];
+
+        $filters = [
+            'store' => $_GET['store'] ?? '',
+            'category' => $_GET['category'] ?? '',
+            'search' => $_GET['search'] ?? '',
+            'dateFrom' => $_GET['dateFrom'] ?? '',
+            'dateTo' => $_GET['dateTo'] ?? '',
+        ];
+
+        $items = InvoiceRepository::searchItems($userId, $filters);
+        $total = array_sum(array_column($items, 'totalPrice'));
+
+        Response::json(['items' => $items, 'total' => $total]);
+    }
+
     public static function pdf(): void
     {
         $payload = AuthMiddleware::authenticate();

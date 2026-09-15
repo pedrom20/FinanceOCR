@@ -29,6 +29,8 @@ $router->get('/api/invoices/{id}', fn (array $params) => InvoiceController::show
 $router->get('/api/files/{fileName}', fn (array $params) => FileController::download($params));
 
 $router->get('/api/reports/pdf', fn () => ReportController::pdf());
+$router->get('/api/reports/filters', fn () => ReportController::filters());
+$router->get('/api/reports/items', fn () => ReportController::items());
 
 $router->get('/api/settings', fn () => SettingsController::show());
 $router->post('/api/settings', fn () => SettingsController::update());

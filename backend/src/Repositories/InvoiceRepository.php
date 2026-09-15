@@ -115,6 +115,71 @@ class InvoiceRepository
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
+    /** Nomes de loja distintos deste utilizador, para o dropdown de filtro do relatório. */
+    public static function listDistinctStores(int $userId): array
+    {
+        $stmt = Database::get()->prepare(
+            'SELECT DISTINCT store_name FROM invoices WHERE user_id = ? ORDER BY store_name'
+        );
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+    }
+
+    /**
+     * Artigos deste utilizador que cumprem os filtros do relatório, com a
+     * informação da fatura a que pertencem. Todos os filtros são opcionais.
+     *
+     * @param array{store?:string,category?:string,search?:string,dateFrom?:string,dateTo?:string} $filters
+     */
+    public static function searchItems(int $userId, array $filters): array
+    {
+        $sql = 'SELECT ii.product_name, ii.quantity, ii.quantity_unit, ii.unit_price, ii.total_price, ii.vat_rate, ii.category,
+                       i.id AS invoice_id, i.invoice_date, i.store_name, i.store_location
+                FROM invoice_items ii
+                JOIN invoices i ON i.id = ii.invoice_id
+                WHERE i.user_id = ?';
+        $params = [$userId];
+
+        if (!empty($filters['store'])) {
+            $sql .= ' AND i.store_name = ?';
+            $params[] = $filters['store'];
+        }
+        if (!empty($filters['category'])) {
+            $sql .= ' AND ii.category = ?';
+            $params[] = $filters['category'];
+        }
+        if (!empty($filters['search'])) {
+            $sql .= ' AND ii.product_name LIKE ?';
+            $params[] = '%' . $filters['search'] . '%';
+        }
+        if (!empty($filters['dateFrom'])) {
+            $sql .= ' AND i.invoice_date >= ?';
+            $params[] = $filters['dateFrom'];
+        }
+        if (!empty($filters['dateTo'])) {
+            $sql .= ' AND i.invoice_date <= ?';
+            $params[] = $filters['dateTo'];
+        }
+        $sql .= ' ORDER BY i.invoice_date DESC, i.id DESC';
+
+        $stmt = Database::get()->prepare($sql);
+        $stmt->execute($params);
+
+        return array_map(static fn (array $row) => [
+            'invoiceId' => (string) $row['invoice_id'],
+            'invoiceDate' => $row['invoice_date'],
+            'storeName' => $row['store_name'],
+            'storeLocation' => $row['store_location'],
+            'productName' => $row['product_name'],
+            'quantity' => (float) $row['quantity'],
+            'quantityUnit' => $row['quantity_unit'],
+            'unitPrice' => (float) $row['unit_price'],
+            'totalPrice' => (float) $row['total_price'],
+            'vatRate' => $row['vat_rate'] !== null ? (float) $row['vat_rate'] : null,
+            'category' => $row['category'],
+        ], $stmt->fetchAll());
+    }
+
     private static function itemsForInvoice(int $invoiceId): array
     {
         $stmt = Database::get()->prepare(
