@@ -6,6 +6,7 @@ export interface User {
 }
 
 export interface InvoiceItem {
+  id?: string;
   productName: string;
   quantity: number;
   quantityUnit?: string;

@@ -127,12 +127,14 @@ class OcrController
                 }
             }
 
-            // O texto extraído para o nome da loja costuma incluir a filial
-            // (ex: "LIDL & Cia - ODEMIRA"), que varia de recibo para recibo mesmo
-            // sendo o mesmo comerciante. Guarda-se essa variante em storeLocation
-            // e, se este NIF já tiver sido confirmado antes por este utilizador,
+            // O InvoiceParser já separa "Empresa - Filial" quando o cabeçalho
+            // vem nesse formato; se não vier (nome sem traço), usa-se o nome
+            // completo como "localização" — melhor que ficar em branco. Depois,
+            // se este NIF já tiver sido confirmado antes por este utilizador,
             // usa-se esse nome (já normalizado por ele) em vez do texto deste OCR.
-            $extracted['storeLocation'] = $extracted['storeName'];
+            if ($extracted['storeLocation'] === '') {
+                $extracted['storeLocation'] = $extracted['storeName'];
+            }
             if ($extracted['storeNif'] !== '') {
                 $knownName = InvoiceRepository::findStoreNameByNif((int) $userId, $extracted['storeNif']);
                 if ($knownName !== null) {

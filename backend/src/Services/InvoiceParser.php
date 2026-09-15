@@ -14,6 +14,7 @@ class InvoiceParser
     {
         $result = [
             'storeName' => 'Loja Identificada',
+            'storeLocation' => '',
             'storeNif' => '',
             'invoiceNumber' => '',
             'invoiceDate' => '',
@@ -65,7 +66,15 @@ class InvoiceParser
             $letters = preg_match_all('/[A-Za-zÀ-ÿ]/u', $line);
             $letters = $letters === false ? 0 : $letters;
             if ($letters >= 3 && $letters / mb_strlen($line) >= 0.5) {
-                $result['storeName'] = $line;
+                // Cabeçalhos costumam vir como "Empresa - Filial/Cidade" (ex:
+                // "LIDL & Cia - ODEMIRA"): a empresa é o comerciante em si, a
+                // parte depois do traço é só a loja/localização desta compra.
+                if (preg_match('/^(.+?)\s+-\s+(.+)$/u', $line, $splitMatch) === 1) {
+                    $result['storeName'] = trim($splitMatch[1]);
+                    $result['storeLocation'] = trim($splitMatch[2]);
+                } else {
+                    $result['storeName'] = $line;
+                }
                 break;
             }
         }

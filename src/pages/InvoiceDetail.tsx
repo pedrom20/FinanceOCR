@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Download, Pencil, Trash2, Check, X } from 'lucide-react';
 import { apiFetch, apiJson } from '../api';
-import { Invoice } from '../types';
+import { Invoice, InvoiceItem } from '../types';
 
 function formatQuantity(quantity: number, unit?: string): string {
   if (unit === 'kg') {
@@ -21,11 +21,18 @@ export const InvoiceDetail = () => {
   const [storeNameInput, setStoreNameInput] = useState('');
   const [applyToAllWithNif, setApplyToAllWithNif] = useState(true);
   const [savingStore, setSavingStore] = useState(false);
+  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [categoryInput, setCategoryInput] = useState('');
+  const [savingCategory, setSavingCategory] = useState(false);
 
   useEffect(() => {
     apiJson<Invoice>(`/api/invoices/${id}`)
       .then(setInvoice)
       .catch(() => setError('Falha ao carregar fatura.'));
+    apiJson<{ categories: string[] }>('/api/reports/filters')
+      .then(data => setCategoryOptions(data.categories))
+      .catch(() => {});
   }, [id]);
 
   const downloadFile = async (fileName: string) => {
@@ -68,6 +75,71 @@ export const InvoiceDetail = () => {
     } finally {
       setSavingStore(false);
     }
+  };
+
+  const startEditingCategory = (item: InvoiceItem) => {
+    setEditingItemId(item.id ?? null);
+    setCategoryInput(item.category ?? '');
+  };
+
+  const saveCategory = async (itemId: string) => {
+    if (!invoice) return;
+    setSavingCategory(true);
+    const category = categoryInput.trim();
+    try {
+      await apiFetch(`/api/invoices/${invoice.id}/items/${itemId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category }),
+      });
+      setInvoice({
+        ...invoice,
+        items: invoice.items?.map(it => (it.id === itemId ? { ...it, category } : it)),
+      });
+      setEditingItemId(null);
+    } catch (err) {
+      alert('Erro ao guardar categoria.');
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
+  const renderCategory = (item: InvoiceItem) => {
+    if (!item.id) {
+      return item.category ? <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs">{item.category}</span> : null;
+    }
+
+    if (editingItemId === item.id) {
+      return (
+        <span className="inline-flex items-center gap-1">
+          <input
+            list="category-options"
+            autoFocus
+            className="w-28 border-b py-0.5 outline-none focus:border-emerald-500 text-xs bg-transparent"
+            value={categoryInput}
+            onChange={e => setCategoryInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && saveCategory(item.id!)}
+          />
+          <button onClick={() => saveCategory(item.id!)} disabled={savingCategory} className="text-emerald-600 hover:text-emerald-700 disabled:opacity-50">
+            <Check size={14} />
+          </button>
+          <button onClick={() => setEditingItemId(null)} className="text-slate-400 hover:text-red-500">
+            <X size={14} />
+          </button>
+        </span>
+      );
+    }
+
+    return (
+      <button onClick={() => startEditingCategory(item)} className="inline-flex items-center gap-1 group">
+        {item.category ? (
+          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs">{item.category}</span>
+        ) : (
+          <span className="text-xs text-slate-300 group-hover:text-emerald-600">+ categoria</span>
+        )}
+        <Pencil size={10} className="text-slate-300 opacity-0 group-hover:opacity-100 shrink-0" />
+      </button>
+    );
   };
 
   const deleteInvoice = async () => {
@@ -167,7 +239,7 @@ export const InvoiceDetail = () => {
             {/* Mobile: cartões, uma coluna. Desktop: tabela. */}
             <div className="space-y-3 sm:hidden">
               {invoice.items.map((item, idx) => (
-                <div key={idx} className="border border-slate-100 rounded-xl p-3">
+                <div key={item.id ?? idx} className="border border-slate-100 rounded-xl p-3">
                   <div className="flex justify-between gap-3">
                     <span className="font-semibold text-slate-700 text-sm">{item.productName}</span>
                     <span className="font-bold text-slate-800 text-sm shrink-0">{item.totalPrice.toFixed(2)} €</span>
@@ -175,7 +247,7 @@ export const InvoiceDetail = () => {
                   <div className="mt-1 text-xs text-slate-400 flex flex-wrap gap-x-3 gap-y-1">
                     <span>{formatQuantity(item.quantity, item.quantityUnit)} × {item.unitPrice.toFixed(2)} €{item.quantityUnit === 'kg' ? '/kg' : ''}</span>
                     {item.vatRate != null && <span>IVA {item.vatRate}%</span>}
-                    {item.category && <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">{item.category}</span>}
+                    {renderCategory(item)}
                   </div>
                 </div>
               ))}
@@ -195,13 +267,9 @@ export const InvoiceDetail = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {invoice.items.map((item, idx) => (
-                    <tr key={idx}>
+                    <tr key={item.id ?? idx}>
                       <td className="py-2.5 pr-2 font-semibold text-slate-700">{item.productName}</td>
-                      <td className="py-2.5 px-2">
-                        {item.category && (
-                          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs">{item.category}</span>
-                        )}
-                      </td>
+                      <td className="py-2.5 px-2">{renderCategory(item)}</td>
                       <td className="py-2.5 px-2 text-right text-slate-500">
                         {formatQuantity(item.quantity, item.quantityUnit)}
                       </td>
@@ -218,6 +286,10 @@ export const InvoiceDetail = () => {
           </div>
         )}
       </div>
+
+      <datalist id="category-options">
+        {categoryOptions.map(c => <option key={c} value={c} />)}
+      </datalist>
     </div>
   );
 };

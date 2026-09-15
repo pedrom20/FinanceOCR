@@ -142,6 +142,23 @@ class InvoiceRepository
         return $stmt->rowCount();
     }
 
+    /**
+     * Atualiza a categoria de um artigo (definida à mão pelo utilizador, em
+     * vez de/por cima da sugestão da IA). true se o artigo existia e
+     * pertencia a uma fatura deste utilizador.
+     */
+    public static function updateItemCategory(int $userId, int $invoiceId, int $itemId, string $category): bool
+    {
+        $stmt = Database::get()->prepare(
+            'UPDATE invoice_items ii
+             JOIN invoices i ON i.id = ii.invoice_id
+             SET ii.category = ?
+             WHERE ii.id = ? AND ii.invoice_id = ? AND i.user_id = ?'
+        );
+        $stmt->execute([$category, $itemId, $invoiceId, $userId]);
+        return $stmt->rowCount() > 0;
+    }
+
     /** true se a fatura existia e pertencia a este utilizador (e foi apagada). Os artigos vão com ela (ON DELETE CASCADE). */
     public static function deleteForUser(int $userId, int $invoiceId): bool
     {
@@ -218,11 +235,12 @@ class InvoiceRepository
     private static function itemsForInvoice(int $invoiceId): array
     {
         $stmt = Database::get()->prepare(
-            'SELECT product_name, quantity, quantity_unit, unit_price, total_price, vat_rate, category
+            'SELECT id, product_name, quantity, quantity_unit, unit_price, total_price, vat_rate, category
              FROM invoice_items WHERE invoice_id = ? ORDER BY id'
         );
         $stmt->execute([$invoiceId]);
         return array_map(static fn (array $row) => [
+            'id' => (string) $row['id'],
             'productName' => $row['product_name'],
             'quantity' => (float) $row['quantity'],
             'quantityUnit' => $row['quantity_unit'],

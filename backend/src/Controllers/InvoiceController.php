@@ -78,6 +78,22 @@ class InvoiceController
         Response::json(['updatedCount' => $updated]);
     }
 
+    public static function updateItemCategory(array $params): void
+    {
+        $payload = AuthMiddleware::authenticate();
+        $userId = (int) $payload['sub'];
+
+        $body = json_decode((string) file_get_contents('php://input'), true);
+        $category = trim((string) ($body['category'] ?? ''));
+
+        $updated = InvoiceRepository::updateItemCategory($userId, (int) $params['invoiceId'], (int) $params['itemId'], $category);
+        if (!$updated) {
+            Response::error('Artigo não encontrado', 404);
+            return;
+        }
+        Response::json(['category' => $category]);
+    }
+
     public static function destroy(array $params): void
     {
         $payload = AuthMiddleware::authenticate();
