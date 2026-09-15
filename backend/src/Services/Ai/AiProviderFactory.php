@@ -21,12 +21,22 @@ class AiProviderFactory
     public static function current(): ?AiProviderInterface
     {
         $activeKey = SettingsRepository::get('ai_provider') ?? AnthropicProvider::key();
+        return self::forKey($activeKey);
+    }
 
+    /**
+     * Instancia um fornecedor específico (não necessariamente o ativo), com
+     * a chave/modelo já guardados — ou, se $overrideApiKey/$overrideModel
+     * forem dados, esses valores em vez dos guardados. Usado pelo "Testar"
+     * nas definições, para verificar uma chave ainda não gravada.
+     */
+    public static function forKey(string $providerKey, ?string $overrideApiKey = null, ?string $overrideModel = null): ?AiProviderInterface
+    {
         foreach (self::all() as $class) {
-            if ($class::key() !== $activeKey) {
+            if ($class::key() !== $providerKey) {
                 continue;
             }
-            $apiKey = SettingsRepository::get($class::key() . '_api_key');
+            $apiKey = $overrideApiKey ?: SettingsRepository::get($class::key() . '_api_key');
             // O .env só serve de fallback para Anthropic, por compatibilidade
             // com deploys que já o configuravam assim antes de existir a
             // página de definições.
@@ -36,7 +46,7 @@ class AiProviderFactory
             if (!$apiKey) {
                 return null;
             }
-            $model = SettingsRepository::get($class::key() . '_model') ?: $class::defaultModel();
+            $model = $overrideModel ?: (SettingsRepository::get($class::key() . '_model') ?: $class::defaultModel());
             return new $class($apiKey, $model);
         }
 

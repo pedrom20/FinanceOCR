@@ -104,6 +104,20 @@ PROMPT;
         return $result;
     }
 
+    public function testConnection(): array
+    {
+        try {
+            $text = trim($this->callText('Responde apenas com a palavra OK, sem mais nada.'));
+            $ok = stripos($text, 'OK') !== false;
+            return [
+                'ok' => $ok,
+                'message' => $ok ? "Ligação bem-sucedida (modelo: {$this->model})." : 'Resposta inesperada do modelo: ' . mb_substr($text, 0, 200),
+            ];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'message' => $e->getMessage()];
+        }
+    }
+
     protected function decodeJson(string $text): ?array
     {
         $text = trim($text);

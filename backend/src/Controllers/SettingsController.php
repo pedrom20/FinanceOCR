@@ -65,4 +65,34 @@ class SettingsController
 
         self::show();
     }
+
+    /**
+     * Testa a ligação a um fornecedor com uma chamada de texto mínima (sem
+     * imagem, custo quase nulo). Aceita apiKey/model no corpo para testar
+     * valores ainda não gravados; se omitidos, usa os já guardados.
+     */
+    public static function test(): void
+    {
+        AuthMiddleware::requireAdmin();
+
+        $body = json_decode((string) file_get_contents('php://input'), true);
+        $providerKey = (string) ($body['provider'] ?? '');
+
+        $validKeys = array_map(fn ($class) => $class::key(), AiProviderFactory::all());
+        if (!in_array($providerKey, $validKeys, true)) {
+            Response::error('Fornecedor inválido', 400);
+            return;
+        }
+
+        $apiKey = trim((string) ($body['apiKey'] ?? '')) ?: null;
+        $model = trim((string) ($body['model'] ?? '')) ?: null;
+
+        $provider = AiProviderFactory::forKey($providerKey, $apiKey, $model);
+        if ($provider === null) {
+            Response::json(['ok' => false, 'message' => 'Nenhuma chave configurada para testar.']);
+            return;
+        }
+
+        Response::json($provider->testConnection());
+    }
 }

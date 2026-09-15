@@ -36,5 +36,6 @@ $router->get('/api/reports/items', fn () => ReportController::items());
 
 $router->get('/api/settings', fn () => SettingsController::show());
 $router->post('/api/settings', fn () => SettingsController::update());
+$router->post('/api/settings/test', fn () => SettingsController::test());
 
 $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);

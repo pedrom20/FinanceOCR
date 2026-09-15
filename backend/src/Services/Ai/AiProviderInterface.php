@@ -32,4 +32,12 @@ interface AiProviderInterface
      * @return array<int,string>|null Índice em $productNames => categoria.
      */
     public function suggestCategories(array $productNames, array $knownCategories): ?array;
+
+    /**
+     * Chamada de texto mínima para confirmar que a chave/modelo funcionam,
+     * sem custo de visão. Nunca lança exceção — erros vão em "message".
+     *
+     * @return array{ok:bool,message:string}
+     */
+    public function testConnection(): array;
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ExternalLink, Loader2, Save, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Loader2, Save, ShieldCheck, XCircle, Zap } from 'lucide-react';
 import { apiJson, ApiError } from '../api';
 
 interface ProviderInfo {
@@ -37,6 +37,8 @@ export const AdminSettings = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [testing, setTesting] = useState<Record<string, boolean>>({});
+  const [testResult, setTestResult] = useState<Record<string, { ok: boolean; message: string } | undefined>>({});
 
   useEffect(() => {
     apiJson<SettingsResponse>('/api/settings')
@@ -70,6 +72,22 @@ export const AdminSettings = () => {
       setError(err instanceof ApiError ? err.message : 'Falha ao guardar definições.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const testProvider = async (key: string) => {
+    setTesting(prev => ({ ...prev, [key]: true }));
+    setTestResult(prev => ({ ...prev, [key]: undefined }));
+    try {
+      const result = await apiJson<{ ok: boolean; message: string }>('/api/settings/test', {
+        method: 'POST',
+        body: JSON.stringify({ provider: key, apiKey: apiKeyInputs[key] ?? '', model: modelInputs[key] ?? '' }),
+      });
+      setTestResult(prev => ({ ...prev, [key]: result }));
+    } catch (err) {
+      setTestResult(prev => ({ ...prev, [key]: { ok: false, message: err instanceof ApiError ? err.message : 'Falha ao testar.' } }));
+    } finally {
+      setTesting(prev => ({ ...prev, [key]: false }));
     }
   };
 
@@ -138,6 +156,23 @@ export const AdminSettings = () => {
                     value={modelInputs[key] ?? ''}
                     onChange={e => setModelInputs(prev => ({ ...prev, [key]: e.target.value }))}
                   />
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => testProvider(key)}
+                    disabled={testing[key] || (!provider.configured && !apiKeyInputs[key])}
+                    className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-emerald-600 disabled:opacity-40 disabled:hover:text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5"
+                  >
+                    {testing[key] ? <Loader2 className="animate-spin" size={14} /> : <Zap size={14} />}
+                    {testing[key] ? 'A testar...' : 'Testar'}
+                  </button>
+                  {testResult[key] && (
+                    <span className={`inline-flex items-center gap-1.5 text-xs ${testResult[key].ok ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {testResult[key].ok ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+                      {testResult[key].message}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
