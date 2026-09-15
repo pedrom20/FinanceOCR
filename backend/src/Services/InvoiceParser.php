@@ -42,7 +42,10 @@ class InvoiceParser
         $dateRegex = '/(\d{2})[-\/](\d{2})[-\/](\d{4})/';
         $isoDateRegex = '/(\d{4})-(\d{2})-(\d{2})/';
         $dateLabelRegex = '/\bDATA\b/iu';
-        $itemExclusionRegex = '/\b(TOTAL|SUBTOTAL|IVA|NIF|NIPC|CONTRIBUINTE|TROCO|DESCONTO|PAGO|REFER[ÊE]NCIA|CLIENTE|CONTA|IBAN|BIC|D[ÉE]BITO|PAGAMENTO|FATURA|EMISS[ÃA]O|MORADA|ATCUD|CR[ÉE]DITO|MULTIBANCO|VISA|MASTERCARD|MB\s?WAY|NUMER[ÁA]RIO|CART[ÃA]O)\b/iu';
+        // COMPRA/AUT aparecem no talão do terminal de pagamento (ex: "COMPRA
+        // 27,35€"), numa página à parte de faturas em PDF de várias páginas —
+        // parecem uma linha de artigo mas repetem só o total já contado.
+        $itemExclusionRegex = '/\b(TOTAL|SUBTOTAL|IVA|NIF|NIPC|CONTRIBUINTE|TROCO|DESCONTO|PAGO|REFER[ÊE]NCIA|CLIENTE|CONTA|IBAN|BIC|D[ÉE]BITO|PAGAMENTO|FATURA|EMISS[ÃA]O|MORADA|ATCUD|CR[ÉE]DITO|MULTIBANCO|VISA|MASTERCARD|MB\s?WAY|NUMER[ÁA]RIO|CART[ÃA]O|COMPRA|TERMINAL)\b/iu';
         // Tabela de taxas de IVA no rodapé ("A 23% 5,26 6,47 1,21"), que mapeia a
         // letra usada em cada linha de artigo (ex: "LIMAO 1,14 B") para a
         // percentagem real.
@@ -50,6 +53,10 @@ class InvoiceParser
         // Linha de detalhe de artigos vendidos a peso (ex: "0,458 kg x 2,49  EUR/kg"),
         // que aparece por baixo da linha do artigo em vez de ser um artigo à parte.
         $weightDetailRegex = '/(\d+[.,]\d+)\s*kg\s*x\s*(\d+[.,]\d+)/iu';
+        // Linha de desconto/promoção (ex: "Promoção Lidl Plus -0,83", "Promoção
+        // -0,02"): o preço na linha do artigo é o preço de tabela, e cada uma
+        // destas linhas reduz o total do artigo imediatamente anterior.
+        $discountRegex = '/\b(?:PROMO[ÇC][ÃA]O|DESCONTO)\b.*-\s*(\d+[.,]\d{2})\s*$/iu';
 
         // Nome da loja: normalmente é uma das primeiras linhas do cabeçalho, antes
         // de qualquer linha "administrativa" (NIF, Fatura Nº, Data, etc.). Linhas
@@ -143,8 +150,10 @@ class InvoiceParser
 
             // Try to catch items (e.g. "Product Name 1.50"). Faturas simplificadas
             // portuguesas costumam terminar cada linha de artigo com a letra da
-            // taxa de IVA (ex: "LIMAO 1,14 B"), daí o grupo opcional capturado.
-            if (preg_match('/(.+?)\s+(\d+[.,]\d{2})(?:\s*([A-Z]))?$/u', $line, $itemMatch) === 1
+            // taxa de IVA (ex: "LIMAO 1,14 B"), daí o grupo opcional capturado —
+            // mas às vezes vem um símbolo de euro em vez da letra (ex: "AGUA
+            // 0,89 x2 1,78 €"), por isso a alternativa sem captura.
+            if (preg_match('/(.+?)\s+(\d+[.,]\d{2})(?:\s*(?:([A-Z])|€))?$/u', $line, $itemMatch) === 1
                 && preg_match($itemExclusionRegex, $line) !== 1) {
                 $productName = preg_replace('/\s{2,}/', ' ', trim($itemMatch[1]));
                 $price = (float) str_replace(',', '.', $itemMatch[2]);
@@ -175,6 +184,22 @@ class InvoiceParser
                 $result['items'][$lastIdx]['quantity'] = (float) str_replace(',', '.', $weightMatch[1]);
                 $result['items'][$lastIdx]['quantityUnit'] = 'kg';
                 $result['items'][$lastIdx]['unitPrice'] = (float) str_replace(',', '.', $weightMatch[2]);
+                continue;
+            }
+
+            // Linha de desconto/promoção: pode haver mais que uma por artigo
+            // (ex: desconto de campanha + desconto de cartão de fidelização),
+            // por isso soma-se ao artigo anterior em vez de substituir.
+            if (preg_match($discountRegex, $line, $discountMatch) === 1 && !empty($result['items'])) {
+                $lastIdx = count($result['items']) - 1;
+                $discount = (float) str_replace(',', '.', $discountMatch[1]);
+                $newTotal = max(0, $result['items'][$lastIdx]['totalPrice'] - $discount);
+                $result['items'][$lastIdx]['totalPrice'] = $newTotal;
+                // O preço/kg é uma referência de mercado, não se mexe; para
+                // artigos normais (quantidade 1), o preço unitário é o total.
+                if ($result['items'][$lastIdx]['quantityUnit'] !== 'kg') {
+                    $result['items'][$lastIdx]['unitPrice'] = $newTotal;
+                }
             }
         }
 

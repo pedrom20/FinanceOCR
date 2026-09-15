@@ -21,7 +21,7 @@ class InvoiceRepository
                 $invoiceData['storeLocation'] ?? '',
                 $invoiceData['storeNif'] ?? '',
                 $invoiceData['invoiceNumber'] ?? '',
-                $invoiceData['invoiceDate'] ?: null,
+                $invoiceData['invoiceDate'] ?? null ?: null,
                 $invoiceData['totalAmount'],
                 $invoiceData['paymentMethod'] ?? 'Dinheiro',
                 $invoiceData['fileName'] ?? null,

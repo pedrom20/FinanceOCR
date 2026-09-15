@@ -57,5 +57,30 @@ if (count($lidl['items']) === 6) {
     $failures += !assertField('item[1].vatRate', $lidl['items'][1]['vatRate'], 23.0);
 }
 
+echo "\n--- Lidl multi-page receipt with per-item discounts (PDF, 3 pages) ---\n";
+$discountText = file_get_contents(__DIR__ . '/fixtures/lidl-discounts-multipage-ocr-text.txt');
+$discount = InvoiceParser::parse($discountText);
+$failures += !assertField('storeName', $discount['storeName'], 'LIDL & Cia');
+$failures += !assertField('storeLocation', $discount['storeLocation'], 'ODEMIRA');
+$failures += !assertField('storeNif', $discount['storeNif'], '503340855');
+$failures += !assertField('totalAmount', $discount['totalAmount'], 27.35);
+$failures += !assertField('invoiceDate', $discount['invoiceDate'], '2026-04-26');
+$failures += !assertField('paymentMethod', $discount['paymentMethod'], 'Multibanco');
+$failures += !assertField('items count', count($discount['items']), 20);
+$discountSum = round(array_sum(array_column($discount['items'], 'totalPrice')), 2);
+$failures += !assertField('sum(items.totalPrice) matches printed total', $discountSum, 27.35);
+if (count($discount['items']) === 20) {
+    // "Bife Frango Alho Salsa" tem preço de tabela 4,12€ e dois descontos
+    // (-0,83 e -0,33): o total do artigo deve refletir ambos.
+    $failures += !assertField('item[0].productName', $discount['items'][0]['productName'], 'Bife Frango Alho Salsa');
+    $failures += !assertField('item[0].totalPrice (após 2 descontos)', $discount['items'][0]['totalPrice'], 2.96);
+    // "AGUA ... 1,78 €" (sem letra de IVA, símbolo de euro em vez disso) tem
+    // de ser reconhecido como o seu próprio artigo, não fundido com o anterior.
+    $failures += !assertField('item[6].productName', $discount['items'][6]['productName'], 'AGUA 0,89 x2');
+    $failures += !assertField('item[6].totalPrice', $discount['items'][6]['totalPrice'], 1.6);
+    $failures += !assertField('item[5].productName (MORANGO, não deve levar o desconto da AGUA)', $discount['items'][5]['productName'], 'MORANGO 500 G');
+    $failures += !assertField('item[5].totalPrice', $discount['items'][5]['totalPrice'], 1.79);
+}
+
 echo "\n" . ($failures === 0 ? "ALL PASSED\n" : "{$failures} FAILURE(S)\n");
 exit($failures === 0 ? 0 : 1);

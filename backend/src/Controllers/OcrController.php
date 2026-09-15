@@ -57,15 +57,19 @@ class OcrController
 
         error_log("A processar OCR para utilizador {$userId} ({$file['name']}, {$file['size']} bytes)");
 
-        $convertedPath = null;
+        $convertedPaths = [];
         try {
             $ocrImagePath = $storedPath;
             if ($mime === 'application/pdf') {
-                $convertedPath = OcrService::convertPdfToImage($storedPath);
-                $ocrImagePath = $convertedPath;
+                $convertedPaths = OcrService::convertPdfToImages($storedPath);
+                // A primeira página é a usada no fallback de visão da IA mais
+                // abaixo — nesse caso (menos comum, só quando o parser local já
+                // falhou) a IA só vê essa página, não o documento completo.
+                $ocrImagePath = $convertedPaths[0];
+                $text = OcrService::recognizeAll($convertedPaths);
+            } else {
+                $text = OcrService::recognize($ocrImagePath);
             }
-
-            $text = OcrService::recognize($ocrImagePath);
             error_log('Texto OCR (' . strlen($text) . " chars) para {$userId}:\n{$text}");
 
             $extracted = InvoiceParser::parse($text);
@@ -147,8 +151,10 @@ class OcrController
             error_log('Erro OCR: ' . $e->getMessage());
             Response::error('Falha ao processar OCR', 500);
         } finally {
-            if ($convertedPath && file_exists($convertedPath)) {
-                @unlink($convertedPath);
+            foreach ($convertedPaths as $path) {
+                if (file_exists($path)) {
+                    @unlink($path);
+                }
             }
         }
     }

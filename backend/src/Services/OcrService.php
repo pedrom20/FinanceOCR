@@ -12,11 +12,17 @@ use FinanceOcr\Config;
  */
 class OcrService
 {
-    public static function convertPdfToImage(string $pdfPath): string
+    /**
+     * @return string[] Um PNG por página, em ordem. `-singlefile` (usado
+     *         antes) força só a primeira página a sair — faturas Lidl com
+     *         muitos artigos costumam vir em 2-3 páginas, com o total, o
+     *         método de pagamento e a tabela de IVA só na última.
+     */
+    public static function convertPdfToImages(string $pdfPath): array
     {
         $outputPrefix = $pdfPath . '-page';
         $cmd = sprintf(
-            'pdftoppm -png -r 300 -singlefile %s %s 2>&1',
+            'pdftoppm -png -r 300 %s %s 2>&1',
             escapeshellarg($pdfPath),
             escapeshellarg($outputPrefix)
         );
@@ -24,7 +30,19 @@ class OcrService
         if ($exitCode !== 0) {
             throw new \RuntimeException('Falha ao converter PDF: ' . implode("\n", $output));
         }
-        return $outputPrefix . '.png';
+
+        $pages = glob($outputPrefix . '-*.png') ?: [];
+        sort($pages, SORT_NATURAL);
+        if (empty($pages)) {
+            throw new \RuntimeException('Conversão do PDF não produziu nenhuma página');
+        }
+        return $pages;
+    }
+
+    /** OCR de várias páginas, concatenado por ordem — para o InvoiceParser ver o documento inteiro. */
+    public static function recognizeAll(array $imagePaths): string
+    {
+        return implode("\n\n", array_map([self::class, 'recognize'], $imagePaths));
     }
 
     public static function recognize(string $imagePath): string
