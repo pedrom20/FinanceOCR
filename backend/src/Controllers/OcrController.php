@@ -5,6 +5,7 @@ namespace FinanceOcr\Controllers;
 use FinanceOcr\Auth\AuthMiddleware;
 use FinanceOcr\Config;
 use FinanceOcr\Repositories\InvoiceRepository;
+use FinanceOcr\Services\AiInvoiceExtractor;
 use FinanceOcr\Services\InvoiceParser;
 use FinanceOcr\Services\OcrService;
 use FinanceOcr\Support\Response;
@@ -68,6 +69,61 @@ class OcrController
             error_log('Texto OCR (' . strlen($text) . " chars) para {$userId}:\n{$text}");
 
             $extracted = InvoiceParser::parse($text);
+
+            // O parser local (grátis, regex) falha em formatos que nunca viu.
+            // Quando o resultado parece pouco fiável, tenta-se um fallback
+            // pago (visão da IA sobre a própria imagem) — só nesse caso, para
+            // manter o custo baixo. Uma falha aqui não deve rebentar o pedido:
+            // fica-se com o resultado do parser local.
+            $lowConfidence = empty($extracted['items'])
+                || $extracted['storeNif'] === ''
+                || $extracted['totalAmount'] <= 0;
+            if ($lowConfidence) {
+                try {
+                    $aiMediaType = $mime === 'application/pdf' ? 'image/png' : $mime;
+                    $aiResult = AiInvoiceExtractor::extract($ocrImagePath, $aiMediaType);
+                    if ($aiResult !== null) {
+                        error_log("Fallback IA usado para utilizador {$userId} (parse local insuficiente)");
+                        if ($aiResult['storeName'] !== '') {
+                            $extracted['storeName'] = $aiResult['storeName'];
+                        }
+                        if ($aiResult['storeNif'] !== '') {
+                            $extracted['storeNif'] = $aiResult['storeNif'];
+                        }
+                        if ($aiResult['invoiceDate'] !== '') {
+                            $extracted['invoiceDate'] = $aiResult['invoiceDate'];
+                        }
+                        if ($aiResult['totalAmount'] > 0) {
+                            $extracted['totalAmount'] = $aiResult['totalAmount'];
+                        }
+                        if (!empty($aiResult['items'])) {
+                            $extracted['items'] = $aiResult['items'];
+                        }
+                        $extracted['paymentMethod'] = $aiResult['paymentMethod'];
+                    }
+                } catch (\Throwable $e) {
+                    error_log('Falha no fallback IA: ' . $e->getMessage());
+                }
+            }
+
+            // Sugestão de categoria por artigo (ex: "Fruta e Legumes"), para
+            // agregação em relatórios entre lojas/marcas diferentes. Chamada de
+            // texto, bem mais barata que o fallback de visão acima, por isso
+            // corre sempre que há artigos (não só em baixa confiança).
+            if (!empty($extracted['items'])) {
+                try {
+                    $productNames = array_column($extracted['items'], 'productName');
+                    $knownCategories = InvoiceRepository::listCategoriesForUser((int) $userId);
+                    $categoryMap = AiInvoiceExtractor::suggestCategories($productNames, $knownCategories);
+                    if ($categoryMap !== null) {
+                        foreach ($categoryMap as $idx => $category) {
+                            $extracted['items'][$idx]['category'] = $category;
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    error_log('Falha na sugestão de categorias: ' . $e->getMessage());
+                }
+            }
 
             // O texto extraído para o nome da loja costuma incluir a filial
             // (ex: "LIDL & Cia - ODEMIRA"), que varia de recibo para recibo mesmo

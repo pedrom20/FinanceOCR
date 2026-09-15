@@ -41,4 +41,17 @@ class InvoiceController
         $userId = (int) $payload['sub'];
         Response::json(InvoiceRepository::listByUser($userId));
     }
+
+    public static function show(array $params): void
+    {
+        $payload = AuthMiddleware::authenticate();
+        $userId = (int) $payload['sub'];
+
+        $invoice = InvoiceRepository::findByIdForUser($userId, (int) $params['id']);
+        if ($invoice === null) {
+            Response::error('Fatura não encontrada', 404);
+            return;
+        }
+        Response::json($invoice);
+    }
 }

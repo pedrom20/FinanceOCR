@@ -30,15 +30,19 @@ class InvoiceRepository
 
             if (!empty($items)) {
                 $itemStmt = $db->prepare(
-                    'INSERT INTO invoice_items (invoice_id, product_name, quantity, unit_price, total_price) VALUES (?, ?, ?, ?, ?)'
+                    'INSERT INTO invoice_items (invoice_id, product_name, quantity, quantity_unit, unit_price, total_price, vat_rate, category)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
                 );
                 foreach ($items as $item) {
                     $itemStmt->execute([
                         $invoiceId,
                         $item['productName'],
                         $item['quantity'] ?? 1,
+                        $item['quantityUnit'] ?? 'un',
                         $item['unitPrice'] ?? 0,
                         $item['totalPrice'] ?? 0,
+                        $item['vatRate'] ?? null,
+                        $item['category'] ?? '',
                     ]);
                 }
             }
@@ -75,6 +79,58 @@ class InvoiceRepository
         $stmt->execute([$userId, $storeNif]);
         $name = $stmt->fetchColumn();
         return $name === false ? null : $name;
+    }
+
+    /**
+     * Fatura completa com os artigos, ou null se não existir ou não pertencer
+     * a este utilizador (evita expor faturas de outros por adivinhação de id).
+     */
+    public static function findByIdForUser(int $userId, int $invoiceId): ?array
+    {
+        $stmt = Database::get()->prepare(
+            'SELECT id, store_name, store_location, store_nif, invoice_number, invoice_date, total_amount, payment_method, file_name, created_at
+             FROM invoices WHERE id = ? AND user_id = ?'
+        );
+        $stmt->execute([$invoiceId, $userId]);
+        $row = $stmt->fetch();
+        if ($row === false) {
+            return null;
+        }
+
+        $invoice = self::mapRow($row);
+        $invoice['items'] = self::itemsForInvoice($invoiceId);
+        return $invoice;
+    }
+
+    /** Categorias já usadas por este utilizador, para o fallback de IA reaproveitar em vez de inventar novas. */
+    public static function listCategoriesForUser(int $userId): array
+    {
+        $stmt = Database::get()->prepare(
+            "SELECT DISTINCT ii.category FROM invoice_items ii
+             JOIN invoices i ON i.id = ii.invoice_id
+             WHERE i.user_id = ? AND ii.category != ''
+             ORDER BY ii.category"
+        );
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+    }
+
+    private static function itemsForInvoice(int $invoiceId): array
+    {
+        $stmt = Database::get()->prepare(
+            'SELECT product_name, quantity, quantity_unit, unit_price, total_price, vat_rate, category
+             FROM invoice_items WHERE invoice_id = ? ORDER BY id'
+        );
+        $stmt->execute([$invoiceId]);
+        return array_map(static fn (array $row) => [
+            'productName' => $row['product_name'],
+            'quantity' => (float) $row['quantity'],
+            'quantityUnit' => $row['quantity_unit'],
+            'unitPrice' => (float) $row['unit_price'],
+            'totalPrice' => (float) $row['total_price'],
+            'vatRate' => $row['vat_rate'] !== null ? (float) $row['vat_rate'] : null,
+            'category' => $row['category'],
+        ], $stmt->fetchAll());
     }
 
     private static function mapRow(array $row): array

@@ -7,8 +7,11 @@ export interface User {
 export interface InvoiceItem {
   productName: string;
   quantity: number;
+  quantityUnit?: string;
   unitPrice: number;
   totalPrice: number;
+  vatRate?: number | null;
+  category?: string;
 }
 
 // Forma devolvida por InvoiceRepository::mapRow() (backend/src/Repositories/InvoiceRepository.php)

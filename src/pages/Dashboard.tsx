@@ -54,7 +54,7 @@ export const Dashboard = () => {
           <h2 className="text-3xl font-black text-slate-900 mt-1">{count}</h2>
         </div>
       </div>
-      <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+      <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-slate-100">
         <h3 className="font-bold text-slate-700 mb-6">Histórico de Despesas (últimos 6 meses)</h3>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">

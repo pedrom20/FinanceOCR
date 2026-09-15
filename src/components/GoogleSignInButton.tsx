@@ -15,10 +15,14 @@ export const GoogleSignInButton = ({ onCredential }: { onCredential: (credential
         client_id: CLIENT_ID,
         callback: response => onCredential(response.credential),
       });
+      // width tem de ser um número de pixels fixo (a API não aceita "100%") —
+      // mede o contentor em vez de usar um valor fixo, para não estourar em ecrãs
+      // estreitos (ex: dentro do cartão de login em telemóveis pequenos).
+      const width = Math.min(320, containerRef.current.clientWidth || 320);
       window.google.accounts.id.renderButton(containerRef.current, {
         theme: 'outline',
         size: 'large',
-        width: 320,
+        width,
       });
     };
 

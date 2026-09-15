@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Download } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { ChevronRight, Download } from 'lucide-react';
 import { apiFetch, apiJson } from '../api';
 import { Invoice } from '../types';
 
@@ -32,7 +33,33 @@ export const InvoiceList = () => {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold text-slate-800">Histórico de Compras</h1>
       {error && <p className="text-red-500 text-sm">{error}</p>}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+
+      {/* Mobile: cartões, uma coluna. Desktop: tabela. */}
+      <div className="space-y-3 md:hidden">
+        {invoices.map(inv => (
+          <Link
+            key={inv.id}
+            to={`/invoices/${inv.id}`}
+            className="block bg-white rounded-2xl shadow-sm border border-slate-100 p-4 active:bg-slate-50"
+          >
+            <div className="flex justify-between items-start gap-3">
+              <div className="min-w-0">
+                <div className="font-bold text-slate-700 truncate">{inv.storeName}</div>
+                {inv.storeLocation && inv.storeLocation !== inv.storeName && (
+                  <div className="text-xs text-slate-400 truncate">{inv.storeLocation}</div>
+                )}
+                <div className="text-xs text-slate-400 mt-1">{inv.invoiceDate}</div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="font-black text-emerald-600">{inv.totalAmount.toFixed(2)} €</span>
+                <ChevronRight size={18} className="text-slate-300" />
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 text-slate-500 text-sm uppercase">
@@ -40,6 +67,7 @@ export const InvoiceList = () => {
               <th className="px-6 py-4">Loja</th>
               <th className="px-6 py-4 text-right">Valor</th>
               <th className="px-6 py-4 text-center">Ficheiro</th>
+              <th className="px-6 py-4"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -59,6 +87,11 @@ export const InvoiceList = () => {
                       <Download size={18} />
                     </button>
                   )}
+                </td>
+                <td className="px-6 py-4 text-right">
+                  <Link to={`/invoices/${inv.id}`} className="text-slate-400 hover:text-emerald-600 text-sm font-semibold">
+                    Ver detalhes
+                  </Link>
                 </td>
               </tr>
             ))}

@@ -27,12 +27,16 @@ CREATE TABLE IF NOT EXISTS invoices (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS invoice_items (
-  id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  invoice_id    INT UNSIGNED NOT NULL,
-  product_name  VARCHAR(255) NOT NULL,
-  quantity      DECIMAL(10,2) NOT NULL DEFAULT 1,
-  unit_price    DECIMAL(10,2) NOT NULL DEFAULT 0,
-  total_price   DECIMAL(10,2) NOT NULL DEFAULT 0,
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  invoice_id     INT UNSIGNED NOT NULL,
+  product_name   VARCHAR(255) NOT NULL,
+  quantity       DECIMAL(10,3) NOT NULL DEFAULT 1,
+  quantity_unit  VARCHAR(10)  NOT NULL DEFAULT 'un',
+  unit_price     DECIMAL(10,2) NOT NULL DEFAULT 0,
+  total_price    DECIMAL(10,2) NOT NULL DEFAULT 0,
+  vat_rate       DECIMAL(5,2) NULL,
+  category       VARCHAR(100) NOT NULL DEFAULT '',
   CONSTRAINT fk_items_invoice FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE,
-  KEY idx_items_invoice (invoice_id)
+  KEY idx_items_invoice (invoice_id),
+  KEY idx_items_category (category)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -45,7 +45,13 @@ $failures += !assertField('paymentMethod', $lidl['paymentMethod'], 'Multibanco')
 $failures += !assertField('items count', count($lidl['items']), 6);
 if (count($lidl['items']) === 6) {
     $failures += !assertField('item[0].productName', $lidl['items'][0]['productName'], 'LIMAO');
-    $failures += !assertField('item[0].unitPrice', $lidl['items'][0]['unitPrice'], 1.14);
+    $failures += !assertField('item[0].unitPrice (EUR/kg)', $lidl['items'][0]['unitPrice'], 2.49);
+    $failures += !assertField('item[0].quantity (kg)', $lidl['items'][0]['quantity'], 0.458);
+    $failures += !assertField('item[0].quantityUnit', $lidl['items'][0]['quantityUnit'], 'kg');
+    $failures += !assertField('item[0].vatRate', $lidl['items'][0]['vatRate'], 6.0);
+    $failures += !assertField('item[1].productName', $lidl['items'][1]['productName'], 'AGUA OXIGENADA 10 VOL.');
+    $failures += !assertField('item[1].quantityUnit', $lidl['items'][1]['quantityUnit'], 'un');
+    $failures += !assertField('item[1].vatRate', $lidl['items'][1]['vatRate'], 23.0);
 }
 
 echo "\n" . ($failures === 0 ? "ALL PASSED\n" : "{$failures} FAILURE(S)\n");

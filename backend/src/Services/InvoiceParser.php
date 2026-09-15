@@ -42,6 +42,13 @@ class InvoiceParser
         $isoDateRegex = '/(\d{4})-(\d{2})-(\d{2})/';
         $dateLabelRegex = '/\bDATA\b/iu';
         $itemExclusionRegex = '/\b(TOTAL|SUBTOTAL|IVA|NIF|NIPC|CONTRIBUINTE|TROCO|DESCONTO|PAGO|REFER[ÊE]NCIA|CLIENTE|CONTA|IBAN|BIC|D[ÉE]BITO|PAGAMENTO|FATURA|EMISS[ÃA]O|MORADA|ATCUD|CR[ÉE]DITO|MULTIBANCO|VISA|MASTERCARD|MB\s?WAY|NUMER[ÁA]RIO|CART[ÃA]O)\b/iu';
+        // Tabela de taxas de IVA no rodapé ("A 23% 5,26 6,47 1,21"), que mapeia a
+        // letra usada em cada linha de artigo (ex: "LIMAO 1,14 B") para a
+        // percentagem real.
+        $vatTableRegex = '/^([A-Z])\s+(\d+(?:[.,]\d+)?)\s*%/u';
+        // Linha de detalhe de artigos vendidos a peso (ex: "0,458 kg x 2,49  EUR/kg"),
+        // que aparece por baixo da linha do artigo em vez de ser um artigo à parte.
+        $weightDetailRegex = '/(\d+[.,]\d+)\s*kg\s*x\s*(\d+[.,]\d+)/iu';
 
         // Nome da loja: normalmente é uma das primeiras linhas do cabeçalho, antes
         // de qualquer linha "administrativa" (NIF, Fatura Nº, Data, etc.). Linhas
@@ -90,6 +97,15 @@ class InvoiceParser
             }
         }
 
+        // Tabela de taxas de IVA: precisa de ser conhecida antes de processar os
+        // artigos, mas normalmente aparece depois deles no documento.
+        $vatRates = [];
+        foreach ($lines as $line) {
+            if (preg_match($vatTableRegex, $line, $vatMatch) === 1) {
+                $vatRates[$vatMatch[1]] = (float) str_replace(',', '.', $vatMatch[2]);
+            }
+        }
+
         foreach ($lines as $line) {
             // Detect NIF
             if (!$result['storeNif'] && preg_match($nifRegex, $line, $nifMatch) === 1) {
@@ -118,8 +134,8 @@ class InvoiceParser
 
             // Try to catch items (e.g. "Product Name 1.50"). Faturas simplificadas
             // portuguesas costumam terminar cada linha de artigo com a letra da
-            // taxa de IVA (ex: "LIMAO 1,14 B"), daí o sufixo opcional.
-            if (preg_match('/(.+?)\s+(\d+[.,]\d{2})(?:\s*[A-Z])?$/u', $line, $itemMatch) === 1
+            // taxa de IVA (ex: "LIMAO 1,14 B"), daí o grupo opcional capturado.
+            if (preg_match('/(.+?)\s+(\d+[.,]\d{2})(?:\s*([A-Z]))?$/u', $line, $itemMatch) === 1
                 && preg_match($itemExclusionRegex, $line) !== 1) {
                 $productName = preg_replace('/\s{2,}/', ' ', trim($itemMatch[1]));
                 $price = (float) str_replace(',', '.', $itemMatch[2]);
@@ -129,13 +145,27 @@ class InvoiceParser
                 // Só aceita linhas que pareçam mesmo um produto: nome com letras
                 // reais e preço num intervalo plausível.
                 if ($lettersInName >= 3 && $price > 0 && $price < 10000) {
+                    $vatLetter = $itemMatch[3] ?? '';
                     $result['items'][] = [
                         'productName' => $productName,
                         'quantity' => 1,
+                        'quantityUnit' => 'un',
                         'unitPrice' => $price,
                         'totalPrice' => $price,
+                        'vatRate' => $vatLetter !== '' && isset($vatRates[$vatLetter]) ? $vatRates[$vatLetter] : null,
+                        'category' => '',
                     ];
+                    continue;
                 }
+            }
+
+            // Linha de detalhe de peso ("0,458 kg x 2,49 EUR/kg"): pertence ao
+            // artigo imediatamente anterior, não é um artigo à parte.
+            if (preg_match($weightDetailRegex, $line, $weightMatch) === 1 && !empty($result['items'])) {
+                $lastIdx = count($result['items']) - 1;
+                $result['items'][$lastIdx]['quantity'] = (float) str_replace(',', '.', $weightMatch[1]);
+                $result['items'][$lastIdx]['quantityUnit'] = 'kg';
+                $result['items'][$lastIdx]['unitPrice'] = (float) str_replace(',', '.', $weightMatch[2]);
             }
         }
 
