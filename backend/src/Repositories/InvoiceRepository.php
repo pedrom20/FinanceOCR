@@ -180,6 +180,54 @@ class InvoiceRepository
         return $stmt->fetchAll();
     }
 
+    /**
+     * Lojas distintas deste utilizador para a área de gestão de lojas —
+     * agrupadas por NIF quando existe (várias filiais/recibos com o mesmo
+     * NIF juntam-se numa linha), ou por nome exato quando não há NIF.
+     */
+    public static function listStoresForUser(int $userId): array
+    {
+        $stmt = Database::get()->prepare(
+            "SELECT
+                CASE WHEN store_nif != '' THEN store_nif ELSE CONCAT('__name__', store_name) END AS group_key,
+                MAX(store_nif) AS store_nif,
+                MAX(store_name) AS store_name,
+                COUNT(*) AS invoice_count,
+                SUM(total_amount) AS total_spent,
+                MAX(created_at) AS last_purchase
+             FROM invoices
+             WHERE user_id = ?
+             GROUP BY group_key
+             ORDER BY total_spent DESC"
+        );
+        $stmt->execute([$userId]);
+        return array_map(static fn (array $row) => [
+            'storeNif' => $row['store_nif'],
+            'storeName' => $row['store_name'],
+            'invoiceCount' => (int) $row['invoice_count'],
+            'totalSpent' => (float) $row['total_spent'],
+            'lastPurchase' => $row['last_purchase'],
+        ], $stmt->fetchAll());
+    }
+
+    /**
+     * Renomeia todas as faturas do grupo (por NIF, ou por nome exato quando
+     * não há NIF) — usado pela área de gestão de lojas, que edita o
+     * comerciante diretamente em vez de precisar de abrir uma fatura.
+     */
+    public static function renameStoreGroup(int $userId, string $storeNif, string $oldStoreName, string $newName): int
+    {
+        $db = Database::get();
+        if ($storeNif !== '') {
+            $stmt = $db->prepare('UPDATE invoices SET store_name = ? WHERE user_id = ? AND store_nif = ?');
+            $stmt->execute([$newName, $userId, $storeNif]);
+        } else {
+            $stmt = $db->prepare("UPDATE invoices SET store_name = ? WHERE user_id = ? AND store_nif = '' AND store_name = ?");
+            $stmt->execute([$newName, $userId, $oldStoreName]);
+        }
+        return $stmt->rowCount();
+    }
+
     /** Nomes de loja distintos deste utilizador, para o dropdown de filtro do relatório. */
     public static function listDistinctStores(int $userId): array
     {

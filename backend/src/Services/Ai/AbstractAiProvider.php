@@ -106,6 +106,27 @@ PROMPT;
         return $result;
     }
 
+    protected const STORE_NAME_PROMPT = <<<'PROMPT'
+Texto extraído por OCR do cabeçalho de um recibo/fatura português:
+Nome: "{{name}}"
+Localização/filial: "{{location}}"
+
+Qual é o nome comercial curto e reconhecível deste comerciante (a marca,
+não a filial nem a razão social completa)? Ex: "LIDL & Cia" -> "Lidl",
+"CONTINENTE MODELO HIPERMERCADOS S.A." -> "Continente".
+
+Responde APENAS com o nome sugerido, sem mais nada, sem aspas.
+PROMPT;
+
+    public function suggestStoreName(string $rawName, string $rawLocation): ?string
+    {
+        $prompt = str_replace(['{{name}}', '{{location}}'], [$rawName, $rawLocation ?: 'desconhecida'], self::STORE_NAME_PROMPT);
+        $text = trim($this->callText($prompt));
+        // Alguns modelos respondem com aspas à volta apesar do pedido.
+        $text = trim($text, " \t\n\r\0\x0B\"'");
+        return $text !== '' ? $text : null;
+    }
+
     public function testConnection(): array
     {
         try {

@@ -10,6 +10,7 @@ use FinanceOcr\Controllers\InvoiceController;
 use FinanceOcr\Controllers\OcrController;
 use FinanceOcr\Controllers\ReportController;
 use FinanceOcr\Controllers\SettingsController;
+use FinanceOcr\Controllers\StoreController;
 
 $router = new Router();
 
@@ -29,6 +30,10 @@ $router->get('/api/invoices/{id}', fn (array $params) => InvoiceController::show
 $router->delete('/api/invoices/{id}', fn (array $params) => InvoiceController::destroy($params));
 $router->put('/api/invoices/{id}/store', fn (array $params) => InvoiceController::renameStore($params));
 $router->put('/api/invoices/{invoiceId}/items/{itemId}', fn (array $params) => InvoiceController::updateItemCategory($params));
+
+$router->get('/api/stores', fn () => StoreController::list());
+$router->put('/api/stores', fn () => StoreController::rename());
+$router->post('/api/stores/suggest-name', fn () => StoreController::suggestName());
 
 $router->get('/api/files/{fileName}', fn (array $params) => FileController::download($params));
 

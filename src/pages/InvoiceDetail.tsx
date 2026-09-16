@@ -39,10 +39,6 @@ export const InvoiceDetail = () => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [error, setError] = useState('');
   const [deleting, setDeleting] = useState(false);
-  const [editingStore, setEditingStore] = useState(false);
-  const [storeNameInput, setStoreNameInput] = useState('');
-  const [applyToAllWithNif, setApplyToAllWithNif] = useState(true);
-  const [savingStore, setSavingStore] = useState(false);
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [categoryInput, setCategoryInput] = useState('');
@@ -69,33 +65,6 @@ export const InvoiceDetail = () => {
       URL.revokeObjectURL(url);
     } catch (err) {
       alert('Erro ao descarregar ficheiro.');
-    }
-  };
-
-  const startEditingStore = () => {
-    if (!invoice) return;
-    setStoreNameInput(invoice.storeName);
-    setApplyToAllWithNif(true);
-    setEditingStore(true);
-  };
-
-  const saveStoreName = async () => {
-    if (!invoice) return;
-    const newName = storeNameInput.trim();
-    if (newName === '') return;
-    setSavingStore(true);
-    try {
-      await apiFetch(`/api/invoices/${invoice.id}/store`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ storeName: newName, applyToAllWithNif: invoice.storeNif ? applyToAllWithNif : false }),
-      });
-      setInvoice({ ...invoice, storeName: newName });
-      setEditingStore(false);
-    } catch (err) {
-      alert('Erro ao guardar nome da loja.');
-    } finally {
-      setSavingStore(false);
     }
   };
 
@@ -200,42 +169,12 @@ export const InvoiceDetail = () => {
       <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-slate-100">
         <div className="p-4 sm:p-6 bg-slate-50 border-b flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            {editingStore ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <input
-                    autoFocus
-                    className="border-b py-1 outline-none focus:border-emerald-500 font-bold text-lg text-slate-800 bg-transparent"
-                    value={storeNameInput}
-                    onChange={e => setStoreNameInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && saveStoreName()}
-                  />
-                  <button onClick={saveStoreName} disabled={savingStore} className="text-emerald-600 hover:text-emerald-700 disabled:opacity-50">
-                    <Check size={18} />
-                  </button>
-                  <button onClick={() => setEditingStore(false)} className="text-slate-400 hover:text-red-500">
-                    <X size={18} />
-                  </button>
-                </div>
-                {invoice.storeNif && (
-                  <label className="flex items-center gap-2 text-xs text-slate-500">
-                    <input type="checkbox" checked={applyToAllWithNif} onChange={e => setApplyToAllWithNif(e.target.checked)} />
-                    Aplicar a todas as faturas deste comerciante (NIF: {invoice.storeNif})
-                  </label>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <h1 className="font-bold text-xl text-slate-800 truncate">{invoice.storeName}</h1>
-                <button onClick={startEditingStore} className="text-slate-300 hover:text-emerald-600 shrink-0">
-                  <Pencil size={14} />
-                </button>
-              </div>
-            )}
+            <h1 className="font-bold text-xl text-slate-800 truncate">{invoice.storeName}</h1>
             {invoice.storeLocation && invoice.storeLocation !== invoice.storeName && (
               <p className="text-sm text-slate-400">{invoice.storeLocation}</p>
             )}
             {invoice.storeNif && <p className="text-xs text-slate-400 mt-1">NIF: {invoice.storeNif}</p>}
+            <Link to="/stores" className="text-xs text-emerald-600 hover:text-emerald-700 inline-block mt-1">Editar loja</Link>
           </div>
           <div className="text-right">
             <p className="text-3xl font-black text-emerald-600">{invoice.totalAmount.toFixed(2)} €</p>

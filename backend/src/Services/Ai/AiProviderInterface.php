@@ -40,4 +40,13 @@ interface AiProviderInterface
      * @return array{ok:bool,message:string}
      */
     public function testConnection(): array;
+
+    /**
+     * Sugere um nome comercial limpo e curto para um comerciante, a partir do
+     * texto bruto que a OCR extraiu (ex: "LIDL & Cia" -> "Lidl"). Usado na
+     * área de gestão de lojas como alternativa a escrever o nome à mão.
+     *
+     * @return string|null null se não conseguir sugerir nada.
+     */
+    public function suggestStoreName(string $rawName, string $rawLocation): ?string;
 }
