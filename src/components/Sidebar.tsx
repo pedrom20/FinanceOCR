@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, UploadCloud, FileText, PieChart, Store, Settings, LogOut, Receipt, User as UserIcon } from 'lucide-react';
+import { LayoutDashboard, UploadCloud, FileText, PieChart, Store, Package, Settings, LogOut, Receipt, User as UserIcon } from 'lucide-react';
 import { User } from '../types';
 
 export const NAV_ITEMS = [
@@ -9,6 +9,7 @@ export const NAV_ITEMS = [
   { path: '/upload', label: 'Upload', icon: <UploadCloud size={20} /> },
   { path: '/reports', label: 'Relatórios', icon: <PieChart size={20} /> },
   { path: '/stores', label: 'Lojas', icon: <Store size={20} /> },
+  { path: '/items', label: 'Artigos', icon: <Package size={20} /> },
 ];
 
 export const ADMIN_NAV_ITEM = { path: '/settings', label: 'Definições', icon: <Settings size={20} /> };

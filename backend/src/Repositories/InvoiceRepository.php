@@ -27,31 +27,78 @@ class InvoiceRepository
                 $invoiceData['fileName'] ?? null,
             ]);
             $invoiceId = (int) $db->lastInsertId();
-
-            if (!empty($items)) {
-                $itemStmt = $db->prepare(
-                    'INSERT INTO invoice_items (invoice_id, product_name, quantity, quantity_unit, unit_price, total_price, vat_rate, category)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-                );
-                foreach ($items as $item) {
-                    $itemStmt->execute([
-                        $invoiceId,
-                        $item['productName'],
-                        $item['quantity'] ?? 1,
-                        $item['quantityUnit'] ?? 'un',
-                        $item['unitPrice'] ?? 0,
-                        $item['totalPrice'] ?? 0,
-                        $item['vatRate'] ?? null,
-                        $item['category'] ?? '',
-                    ]);
-                }
-            }
+            self::insertItems($db, $invoiceId, $items);
 
             $db->commit();
             return $invoiceId;
         } catch (\Throwable $e) {
             $db->rollBack();
             throw $e;
+        }
+    }
+
+    /**
+     * Substitui a fatura (dados + artigos) pelo resultado de um novo OCR
+     * sobre o mesmo ficheiro original — mantém o id, created_at e fileName,
+     * troca tudo o resto. false se a fatura não pertencer a este utilizador.
+     */
+    public static function reprocessInvoice(int $userId, int $invoiceId, array $extracted): bool
+    {
+        $db = Database::get();
+        $stmt = $db->prepare('SELECT id FROM invoices WHERE id = ? AND user_id = ?');
+        $stmt->execute([$invoiceId, $userId]);
+        if ($stmt->fetch() === false) {
+            return false;
+        }
+
+        $db->beginTransaction();
+        try {
+            $stmt = $db->prepare(
+                'UPDATE invoices SET store_name = ?, store_location = ?, store_nif = ?, invoice_date = ?, total_amount = ?, payment_method = ?
+                 WHERE id = ? AND user_id = ?'
+            );
+            $stmt->execute([
+                $extracted['storeName'],
+                $extracted['storeLocation'] ?? '',
+                $extracted['storeNif'] ?? '',
+                $extracted['invoiceDate'] ?: null,
+                $extracted['totalAmount'],
+                $extracted['paymentMethod'] ?? 'Dinheiro',
+                $invoiceId,
+                $userId,
+            ]);
+
+            $db->prepare('DELETE FROM invoice_items WHERE invoice_id = ?')->execute([$invoiceId]);
+            self::insertItems($db, $invoiceId, $extracted['items'] ?? []);
+
+            $db->commit();
+            return true;
+        } catch (\Throwable $e) {
+            $db->rollBack();
+            throw $e;
+        }
+    }
+
+    private static function insertItems(\PDO $db, int $invoiceId, array $items): void
+    {
+        if (empty($items)) {
+            return;
+        }
+        $itemStmt = $db->prepare(
+            'INSERT INTO invoice_items (invoice_id, product_name, quantity, quantity_unit, unit_price, total_price, vat_rate, category)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        );
+        foreach ($items as $item) {
+            $itemStmt->execute([
+                $invoiceId,
+                $item['productName'],
+                $item['quantity'] ?? 1,
+                $item['quantityUnit'] ?? 'un',
+                $item['unitPrice'] ?? 0,
+                $item['totalPrice'] ?? 0,
+                $item['vatRate'] ?? null,
+                $item['category'] ?? '',
+            ]);
         }
     }
 
@@ -183,11 +230,16 @@ class InvoiceRepository
     /**
      * Lojas distintas deste utilizador para a área de gestão de lojas —
      * agrupadas por NIF quando existe (várias filiais/recibos com o mesmo
-     * NIF juntam-se numa linha), ou por nome exato quando não há NIF.
+     * NIF juntam-se numa linha), ou por nome exato quando não há NIF. Um
+     * comerciante como o Lidl tem 200+ lojas físicas a partilhar o mesmo
+     * NIF — agrupar só por NIF perderia de vista em que loja concreta foi
+     * cada compra, por isso cada grupo vem com a divisão por storeLocation.
      */
     public static function listStoresForUser(int $userId): array
     {
-        $stmt = Database::get()->prepare(
+        $db = Database::get();
+
+        $stmt = $db->prepare(
             "SELECT
                 CASE WHEN store_nif != '' THEN store_nif ELSE CONCAT('__name__', store_name) END AS group_key,
                 MAX(store_nif) AS store_nif,
@@ -201,13 +253,43 @@ class InvoiceRepository
              ORDER BY total_spent DESC"
         );
         $stmt->execute([$userId]);
-        return array_map(static fn (array $row) => [
-            'storeNif' => $row['store_nif'],
-            'storeName' => $row['store_name'],
-            'invoiceCount' => (int) $row['invoice_count'],
-            'totalSpent' => (float) $row['total_spent'],
-            'lastPurchase' => $row['last_purchase'],
-        ], $stmt->fetchAll());
+        $groups = $stmt->fetchAll();
+
+        $stmt = $db->prepare(
+            "SELECT
+                CASE WHEN store_nif != '' THEN store_nif ELSE CONCAT('__name__', store_name) END AS group_key,
+                store_location,
+                COUNT(*) AS invoice_count,
+                SUM(total_amount) AS total_spent,
+                MAX(created_at) AS last_purchase
+             FROM invoices
+             WHERE user_id = ?
+             GROUP BY group_key, store_location
+             ORDER BY total_spent DESC"
+        );
+        $stmt->execute([$userId]);
+        $locationsByGroup = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $locationsByGroup[$row['group_key']][] = [
+                'location' => $row['store_location'],
+                'invoiceCount' => (int) $row['invoice_count'],
+                'totalSpent' => (float) $row['total_spent'],
+                'lastPurchase' => $row['last_purchase'],
+            ];
+        }
+
+        return array_map(static function (array $row) use ($locationsByGroup) {
+            // Só vale a pena mostrar a divisão por loja se houver mais que uma.
+            $locations = $locationsByGroup[$row['group_key']] ?? [];
+            return [
+                'storeNif' => $row['store_nif'],
+                'storeName' => $row['store_name'],
+                'invoiceCount' => (int) $row['invoice_count'],
+                'totalSpent' => (float) $row['total_spent'],
+                'lastPurchase' => $row['last_purchase'],
+                'locations' => count($locations) > 1 ? $locations : [],
+            ];
+        }, $groups);
     }
 
     /**
@@ -291,6 +373,58 @@ class InvoiceRepository
             'vatRate' => $row['vat_rate'] !== null ? (float) $row['vat_rate'] : null,
             'category' => $row['category'],
         ], $stmt->fetchAll());
+    }
+
+    /**
+     * Renomeia TODOS os artigos deste utilizador com este nome exato — usado
+     * pela área de Artigos, que edita o "tipo de produto" diretamente em vez
+     * de precisar de abrir cada fatura.
+     */
+    public static function renameProductGroup(int $userId, string $oldName, string $newName): int
+    {
+        $stmt = Database::get()->prepare(
+            'UPDATE invoice_items ii
+             JOIN invoices i ON i.id = ii.invoice_id
+             SET ii.product_name = ?
+             WHERE i.user_id = ? AND ii.product_name = ?'
+        );
+        $stmt->execute([$newName, $userId, $oldName]);
+        return $stmt->rowCount();
+    }
+
+    /** Recategoriza TODOS os artigos deste utilizador com este nome exato. */
+    public static function recategorizeProductGroup(int $userId, string $productName, string $category): int
+    {
+        $stmt = Database::get()->prepare(
+            'UPDATE invoice_items ii
+             JOIN invoices i ON i.id = ii.invoice_id
+             SET ii.category = ?
+             WHERE i.user_id = ? AND ii.product_name = ?'
+        );
+        $stmt->execute([$category, $userId, $productName]);
+        return $stmt->rowCount();
+    }
+
+    /**
+     * Guarda que "raw_name" (o texto que a OCR costuma extrair) deve passar a
+     * aparecer como "canonical_name" — para faturas futuras não criarem um
+     * "artigo novo" sempre que a OCR ler o mesmo texto bruto outra vez.
+     */
+    public static function saveProductNameMapping(int $userId, string $rawName, string $canonicalName): void
+    {
+        $stmt = Database::get()->prepare(
+            'INSERT INTO product_name_mappings (user_id, raw_name, canonical_name) VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE canonical_name = VALUES(canonical_name)'
+        );
+        $stmt->execute([$userId, $rawName, $canonicalName]);
+    }
+
+    /** @return array<string,string> raw_name => canonical_name, para aplicar logo a seguir à OCR. */
+    public static function findProductNameMappings(int $userId): array
+    {
+        $stmt = Database::get()->prepare('SELECT raw_name, canonical_name FROM product_name_mappings WHERE user_id = ?');
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll(\PDO::FETCH_KEY_PAIR);
     }
 
     private static function itemsForInvoice(int $invoiceId): array

@@ -147,6 +147,49 @@ class InvoiceController
         Response::json(['updated' => $updated, 'total' => count($items)]);
     }
 
+    /**
+     * Corre outra vez todo o pipeline de OCR sobre o ficheiro já guardado
+     * desta fatura (ex: depois de melhorar o parser, ou de configurar/trocar
+     * o fornecedor de IA) e substitui os dados/artigos pelo resultado novo.
+     */
+    public static function reprocess(array $params): void
+    {
+        $payload = AuthMiddleware::authenticate();
+        $userId = (int) $payload['sub'];
+        $invoiceId = (int) $params['id'];
+
+        $invoice = InvoiceRepository::findByIdForUser($userId, $invoiceId);
+        if ($invoice === null) {
+            Response::error('Fatura não encontrada', 404);
+            return;
+        }
+        if (empty($invoice['fileName'])) {
+            Response::error('Esta fatura não tem documento original para reprocessar', 400);
+            return;
+        }
+
+        $path = Config::uploadsDir() . '/' . $userId . '/' . basename($invoice['fileName']);
+        if (!file_exists($path)) {
+            Response::error('O documento original já não existe no servidor', 404);
+            return;
+        }
+
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $path);
+        finfo_close($finfo);
+
+        try {
+            $extracted = OcrController::extractInvoiceData($path, $mime, $userId);
+        } catch (\Throwable $e) {
+            error_log("Erro ao reprocessar fatura {$invoiceId}: " . $e->getMessage());
+            Response::error('Falha ao reprocessar fatura', 500);
+            return;
+        }
+
+        InvoiceRepository::reprocessInvoice($userId, $invoiceId, $extracted);
+        Response::json(InvoiceRepository::findByIdForUser($userId, $invoiceId));
+    }
+
     public static function destroy(array $params): void
     {
         $payload = AuthMiddleware::authenticate();

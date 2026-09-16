@@ -18,7 +18,7 @@ class OcrController
     public static function processInvoice(): void
     {
         $payload = AuthMiddleware::authenticate();
-        $userId = (string) $payload['sub'];
+        $userId = (int) $payload['sub'];
 
         if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
             Response::error('Ficheiro é obrigatório', 400);
@@ -57,6 +57,25 @@ class OcrController
 
         error_log("A processar OCR para utilizador {$userId} ({$file['name']}, {$file['size']} bytes)");
 
+        try {
+            $extracted = self::extractInvoiceData($storedPath, $mime, $userId);
+            Response::json(array_merge($extracted, ['fileName' => $storedName]));
+        } catch (\Throwable $e) {
+            error_log('Erro OCR: ' . $e->getMessage());
+            Response::error('Falha ao processar OCR', 500);
+        }
+    }
+
+    /**
+     * Todo o pipeline de extração (OCR + parser local + fallback de IA +
+     * categorias + normalização de loja/artigos), a partir de um ficheiro já
+     * guardado em disco. Partilhado entre o upload normal
+     * (processInvoice()) e o reprocessamento de uma fatura já existente
+     * (InvoiceController::reprocess()), que corre exatamente o mesmo
+     * pipeline sobre o ficheiro original em vez de um novo upload.
+     */
+    public static function extractInvoiceData(string $storedPath, string $mime, int $userId): array
+    {
         $convertedPaths = [];
         try {
             $ocrImagePath = $storedPath;
@@ -112,6 +131,22 @@ class OcrController
                 }
             }
 
+            // Nomes de artigo que o utilizador já corrigiu antes (na área de
+            // Artigos) substituem o texto bruto da OCR outra vez — para não
+            // criar um "artigo novo" sempre que o mesmo produto aparece numa
+            // fatura futura só porque a OCR lê o mesmo texto bruto.
+            if (!empty($extracted['items'])) {
+                $mappings = InvoiceRepository::findProductNameMappings($userId);
+                if (!empty($mappings)) {
+                    foreach ($extracted['items'] as &$item) {
+                        if (isset($mappings[$item['productName']])) {
+                            $item['productName'] = $mappings[$item['productName']];
+                        }
+                    }
+                    unset($item);
+                }
+            }
+
             // Sugestão de categoria por artigo (ex: "Fruta e Legumes"), para
             // agregação em relatórios entre lojas/marcas diferentes. Chamada de
             // texto, bem mais barata que o fallback de visão acima, por isso
@@ -119,7 +154,7 @@ class OcrController
             if (!empty($extracted['items'])) {
                 try {
                     $productNames = array_column($extracted['items'], 'productName');
-                    $knownCategories = InvoiceRepository::listCategoriesForUser((int) $userId);
+                    $knownCategories = InvoiceRepository::listCategoriesForUser($userId);
                     $categoryMap = $provider?->suggestCategories($productNames, $knownCategories);
                     if ($categoryMap !== null) {
                         foreach ($categoryMap as $idx => $category) {
@@ -140,16 +175,13 @@ class OcrController
                 $extracted['storeLocation'] = $extracted['storeName'];
             }
             if ($extracted['storeNif'] !== '') {
-                $knownName = InvoiceRepository::findStoreNameByNif((int) $userId, $extracted['storeNif']);
+                $knownName = InvoiceRepository::findStoreNameByNif($userId, $extracted['storeNif']);
                 if ($knownName !== null) {
                     $extracted['storeName'] = $knownName;
                 }
             }
 
-            Response::json(array_merge($extracted, ['fileName' => $storedName]));
-        } catch (\Throwable $e) {
-            error_log('Erro OCR: ' . $e->getMessage());
-            Response::error('Falha ao processar OCR', 500);
+            return $extracted;
         } finally {
             foreach ($convertedPaths as $path) {
                 if (file_exists($path)) {

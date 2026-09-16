@@ -7,6 +7,7 @@ use FinanceOcr\Controllers\AuthController;
 use FinanceOcr\Controllers\FileController;
 use FinanceOcr\Controllers\HealthController;
 use FinanceOcr\Controllers\InvoiceController;
+use FinanceOcr\Controllers\ItemController;
 use FinanceOcr\Controllers\OcrController;
 use FinanceOcr\Controllers\ReportController;
 use FinanceOcr\Controllers\SettingsController;
@@ -30,6 +31,10 @@ $router->get('/api/invoices/{id}', fn (array $params) => InvoiceController::show
 $router->delete('/api/invoices/{id}', fn (array $params) => InvoiceController::destroy($params));
 $router->put('/api/invoices/{id}/store', fn (array $params) => InvoiceController::renameStore($params));
 $router->put('/api/invoices/{invoiceId}/items/{itemId}', fn (array $params) => InvoiceController::updateItemCategory($params));
+$router->post('/api/invoices/{id}/reprocess', fn (array $params) => InvoiceController::reprocess($params));
+
+$router->put('/api/items/rename', fn () => ItemController::rename());
+$router->put('/api/items/category', fn () => ItemController::recategorize());
 
 $router->get('/api/stores', fn () => StoreController::list());
 $router->put('/api/stores', fn () => StoreController::rename());

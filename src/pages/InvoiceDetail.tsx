@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Download, Pencil, Trash2, Check, X } from 'lucide-react';
-import { apiFetch, apiJson } from '../api';
+import { ArrowLeft, Download, Pencil, RefreshCw, Trash2, Check, X } from 'lucide-react';
+import { apiFetch, apiJson, ApiError } from '../api';
 import { Invoice, InvoiceItem } from '../types';
+import { Modal } from '../components/Modal';
 
 function formatQuantity(quantity: number, unit?: string): string {
   if (unit === 'kg') {
@@ -43,6 +44,9 @@ export const InvoiceDetail = () => {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [categoryInput, setCategoryInput] = useState('');
   const [savingCategory, setSavingCategory] = useState(false);
+  const [showReprocessModal, setShowReprocessModal] = useState(false);
+  const [reprocessing, setReprocessing] = useState(false);
+  const [reprocessError, setReprocessError] = useState('');
 
   useEffect(() => {
     apiJson<Invoice>(`/api/invoices/${id}`)
@@ -133,6 +137,21 @@ export const InvoiceDetail = () => {
     );
   };
 
+  const reprocessInvoice = async () => {
+    if (!invoice) return;
+    setReprocessing(true);
+    setReprocessError('');
+    try {
+      const updated = await apiJson<Invoice>(`/api/invoices/${invoice.id}/reprocess`, { method: 'POST' });
+      setInvoice(updated);
+      setShowReprocessModal(false);
+    } catch (err) {
+      setReprocessError(err instanceof ApiError ? err.message : 'Falha ao reprocessar fatura.');
+    } finally {
+      setReprocessing(false);
+    }
+  };
+
   const deleteInvoice = async () => {
     if (!invoice) return;
     if (!window.confirm(`Apagar a fatura de "${invoice.storeName}"? Esta ação não pode ser desfeita.`)) {
@@ -157,14 +176,50 @@ export const InvoiceDetail = () => {
         <Link to="/invoices" className="inline-flex items-center gap-2 text-slate-500 hover:text-emerald-600 text-sm">
           <ArrowLeft size={16} /> Voltar às faturas
         </Link>
-        <button
-          onClick={deleteInvoice}
-          disabled={deleting}
-          className="inline-flex items-center gap-2 text-sm text-red-500 hover:text-red-600 disabled:opacity-50"
-        >
-          <Trash2 size={16} /> {deleting ? 'A apagar...' : 'Apagar fatura'}
-        </button>
+        <div className="flex items-center gap-4">
+          {invoice.fileName && (
+            <button
+              onClick={() => setShowReprocessModal(true)}
+              className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-emerald-600"
+            >
+              <RefreshCw size={16} /> Reprocessar
+            </button>
+          )}
+          <button
+            onClick={deleteInvoice}
+            disabled={deleting}
+            className="inline-flex items-center gap-2 text-sm text-red-500 hover:text-red-600 disabled:opacity-50"
+          >
+            <Trash2 size={16} /> {deleting ? 'A apagar...' : 'Apagar fatura'}
+          </button>
+        </div>
       </div>
+
+      {showReprocessModal && (
+        <Modal title="Reprocessar fatura" onClose={() => !reprocessing && setShowReprocessModal(false)}>
+          <p className="text-sm text-slate-600">
+            Isto volta a correr o OCR sobre o documento original desta fatura e substitui os dados extraídos (loja, data, total, artigos) pelo resultado novo. Correções que tenhas feito à mão (nomes, categorias) podem ser substituídas se a extração vier diferente.
+          </p>
+          {reprocessError && <p className="text-red-500 text-sm">{reprocessError}</p>}
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setShowReprocessModal(false)}
+              disabled={reprocessing}
+              className="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={reprocessInvoice}
+              disabled={reprocessing}
+              className="inline-flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {reprocessing ? <RefreshCw className="animate-spin" size={16} /> : <RefreshCw size={16} />}
+              {reprocessing ? 'A reprocessar...' : 'Reprocessar'}
+            </button>
+          </div>
+        </Modal>
+      )}
 
       <div className="bg-white rounded-3xl shadow-sm overflow-hidden border border-slate-100">
         <div className="p-4 sm:p-6 bg-slate-50 border-b flex flex-wrap items-start justify-between gap-3">

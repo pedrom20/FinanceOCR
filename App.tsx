@@ -11,6 +11,7 @@ import { InvoiceDetail } from './src/pages/InvoiceDetail';
 import { InvoiceUpload } from './src/pages/InvoiceUpload';
 import { Reports } from './src/pages/Reports';
 import { Stores } from './src/pages/Stores';
+import { Items } from './src/pages/Items';
 import { AdminSettings } from './src/pages/AdminSettings';
 
 const AppShell = () => {
@@ -32,6 +33,7 @@ const AppShell = () => {
             <Route path="/upload" element={<InvoiceUpload />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/stores" element={<Stores />} />
+            <Route path="/items" element={<Items />} />
             <Route path="/settings" element={user.role === 'admin' ? <AdminSettings /> : <Navigate to="/" />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>

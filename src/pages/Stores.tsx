@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Store as StoreIcon, Pencil, Check, X, Sparkles, Loader2 } from 'lucide-react';
+import { Store as StoreIcon, Pencil, Check, X, Sparkles, Loader2, ChevronDown, ChevronRight, MapPin } from 'lucide-react';
 import { apiFetch, apiJson, ApiError } from '../api';
+
+interface StoreLocation {
+  location: string;
+  invoiceCount: number;
+  totalSpent: number;
+  lastPurchase: string;
+}
 
 interface StoreRow {
   storeNif: string;
@@ -8,6 +15,7 @@ interface StoreRow {
   invoiceCount: number;
   totalSpent: number;
   lastPurchase: string;
+  locations: StoreLocation[];
 }
 
 const keyOf = (s: StoreRow) => s.storeNif || `name:${s.storeName}`;
@@ -20,6 +28,15 @@ export const Stores = () => {
   const [nameInput, setNameInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [suggesting, setSuggesting] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (key: string) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
 
   const load = () => {
     setLoading(true);
@@ -76,7 +93,7 @@ export const Stores = () => {
     <div className="max-w-3xl mx-auto space-y-4">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Lojas</h1>
-        <p className="text-sm text-slate-400 mt-1">Comerciantes agrupados pelo NIF das tuas faturas. Editar aqui aplica-se a todas as faturas desse comerciante.</p>
+        <p className="text-sm text-slate-400 mt-1">Comerciantes agrupados pelo NIF das tuas faturas. Editar aqui aplica-se a todas as faturas desse comerciante. Quando um comerciante tem mais que uma loja (ex: Lidl), a divisão por loja fica visível ao expandir.</p>
       </div>
       {error && <p className="text-red-500 text-sm">{error}</p>}
 
@@ -106,29 +123,55 @@ export const Stores = () => {
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center shrink-0">
-                      <StoreIcon size={18} />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-800 truncate">{s.storeName}</span>
-                        <button onClick={() => startEditing(s)} className="text-slate-300 hover:text-emerald-600 shrink-0">
-                          <Pencil size={14} />
+                <>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {s.locations.length > 0 ? (
+                        <button onClick={() => toggleExpanded(key)} className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center shrink-0">
+                          {expanded.has(key) ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                         </button>
-                      </div>
-                      <div className="text-xs text-slate-400 truncate">
-                        {s.storeNif && <>NIF: {s.storeNif} · </>}
-                        {s.invoiceCount} fatura{s.invoiceCount !== 1 ? 's' : ''}
+                      ) : (
+                        <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center shrink-0">
+                          <StoreIcon size={18} />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-800 truncate">{s.storeName}</span>
+                          <button onClick={() => startEditing(s)} className="text-slate-300 hover:text-emerald-600 shrink-0">
+                            <Pencil size={14} />
+                          </button>
+                        </div>
+                        <div className="text-xs text-slate-400 truncate">
+                          {s.storeNif && <>NIF: {s.storeNif} · </>}
+                          {s.invoiceCount} fatura{s.invoiceCount !== 1 ? 's' : ''}
+                          {s.locations.length > 0 && <> · {s.locations.length} lojas</>}
+                        </div>
                       </div>
                     </div>
+                    <div className="text-right shrink-0">
+                      <div className="font-black text-emerald-600">{s.totalSpent.toFixed(2)} €</div>
+                      <div className="text-xs text-slate-400">{s.lastPurchase?.slice(0, 10)}</div>
+                    </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className="font-black text-emerald-600">{s.totalSpent.toFixed(2)} €</div>
-                    <div className="text-xs text-slate-400">{s.lastPurchase?.slice(0, 10)}</div>
-                  </div>
-                </div>
+
+                  {expanded.has(key) && s.locations.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+                      {s.locations.map(loc => (
+                        <div key={loc.location || '(sem loja)'} className="flex items-center justify-between gap-3 pl-[3.25rem] text-sm">
+                          <div className="flex items-center gap-2 min-w-0 text-slate-600">
+                            <MapPin size={14} className="text-slate-300 shrink-0" />
+                            <span className="truncate">{loc.location || 'Sem loja identificada'}</span>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="font-semibold text-slate-700">{loc.totalSpent.toFixed(2)} €</span>
+                            <span className="text-xs text-slate-400 ml-2">{loc.invoiceCount}×</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           );

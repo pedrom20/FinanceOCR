@@ -47,3 +47,17 @@ CREATE TABLE IF NOT EXISTS invoice_items (
   KEY idx_items_invoice (invoice_id),
   KEY idx_items_category (category)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Nomes de artigo corrigidos à mão na área de Artigos: quando a OCR volta a
+-- extrair o mesmo texto bruto (ex: "Atum em Lata") numa fatura futura,
+-- substitui-se automaticamente pelo nome já escolhido, em vez de criar um
+-- "artigo novo" com o texto bruto outra vez.
+CREATE TABLE IF NOT EXISTS product_name_mappings (
+  id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id         INT UNSIGNED NOT NULL,
+  raw_name        VARCHAR(255) NOT NULL,
+  canonical_name  VARCHAR(255) NOT NULL,
+  updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_mapping_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE KEY uq_mapping_user_raw (user_id, raw_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
