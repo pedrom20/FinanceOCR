@@ -92,12 +92,14 @@ export const Stores = () => {
 
   return (
     <div className="d-flex flex-column gap-3 mx-auto" style={{ maxWidth: 720 }}>
-      <div>
-        <h1 className="h3 fw-bold">Lojas</h1>
-        <p className="text-muted small mb-0">
-          Comerciantes agrupados pelo NIF das tuas faturas. Editar aqui aplica-se a todas as faturas desse comerciante.
-          Quando um comerciante tem mais que uma loja (ex: Lidl), a divisão por loja fica visível ao expandir.
-        </p>
+      <div className="page-header">
+        <div>
+          <h1>Lojas</h1>
+          <p>
+            Comerciantes agrupados pelo NIF das tuas faturas. Editar aqui aplica-se a todas as faturas desse comerciante.
+            Quando um comerciante tem mais que uma loja (ex: Lidl), a divisão por loja fica visível ao expandir.
+          </p>
+        </div>
       </div>
       {error && <Alert variant="danger">{error}</Alert>}
 
@@ -106,7 +108,7 @@ export const Stores = () => {
           const key = keyOf(s);
           const editing = editingKey === key;
           return (
-            <Card key={key} className="border-0 shadow-sm">
+            <Card key={key}>
               <Card.Body>
                 {editing ? (
                   <div className="d-flex align-items-center gap-2">

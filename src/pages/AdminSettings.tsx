@@ -96,9 +96,14 @@ export const AdminSettings = () => {
 
   return (
     <div className="d-flex flex-column gap-3 mx-auto" style={{ maxWidth: 640 }}>
-      <h1 className="h3 fw-bold">Definições</h1>
+      <div className="page-header">
+        <div>
+          <h1>Definições</h1>
+          <p>Fornecedores de IA usados no OCR e na categorização automática.</p>
+        </div>
+      </div>
 
-      <Card className="border-0 shadow-sm">
+      <Card>
         <Card.Header className="bg-light d-flex align-items-center gap-3">
           <div className="bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 40, height: 40 }}>
             <ShieldCheck size={20} />

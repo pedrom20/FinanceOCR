@@ -146,7 +146,7 @@ export const Reports = () => {
 
   return (
     <div className="d-flex flex-column gap-4">
-      <Card className="border-0 shadow-sm text-center">
+      <Card className="text-center">
         <Card.Body className="p-4 p-sm-5">
           <div className="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle p-3 mb-3" style={{ width: 72, height: 72 }}>
             <PieChart size={36} />
@@ -162,7 +162,7 @@ export const Reports = () => {
         </Card.Body>
       </Card>
 
-      <Card className="border-0 shadow-sm">
+      <Card>
         <Card.Header className="bg-light d-flex flex-wrap align-items-center justify-content-between gap-3">
           <div className="d-flex align-items-center gap-2">
             <Filter size={18} className="text-muted" />

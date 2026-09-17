@@ -208,7 +208,7 @@ export const InvoiceDetail = () => {
         </Modal.Footer>
       </Modal>
 
-      <Card className="border-0 shadow-sm">
+      <Card>
         <Card.Header className="bg-light d-flex flex-wrap justify-content-between align-items-start gap-3">
           <div>
             <h1 className="h5 fw-bold mb-0">{invoice.storeName}</h1>

@@ -67,13 +67,15 @@ export const Users = () => {
 
   return (
     <div className="d-flex flex-column gap-3">
-      <div>
-        <h1 className="h3 fw-bold">Utilizadores</h1>
-        <p className="text-muted small mb-0">Gestão de contas e permissões. Tem de existir sempre pelo menos um administrador.</p>
+      <div className="page-header">
+        <div>
+          <h1>Utilizadores</h1>
+          <p>Gestão de contas e permissões. Tem de existir sempre pelo menos um administrador.</p>
+        </div>
       </div>
       {error && <Alert variant="danger">{error}</Alert>}
 
-      <Card className="border-0 shadow-sm">
+      <Card>
         <Table responsive hover className="mb-0 align-middle">
           <thead>
             <tr className="text-muted text-uppercase small">
@@ -110,13 +112,13 @@ export const Users = () => {
                   <td className="px-3 small text-muted">{u.createdAt?.slice(0, 10)}</td>
                   <td className="px-3 text-end">
                     <Button
-                      variant="link"
-                      className="text-danger p-0"
+                      variant="light"
+                      className="btn-action btn-action-danger"
                       disabled={busyId === u.id || u.id === currentUser?.id}
                       onClick={() => removeUser(u)}
                       title={u.id === currentUser?.id ? 'Não podes apagar a tua própria conta' : 'Apagar utilizador'}
                     >
-                      {busyId === u.id ? <Loader2 className="spin" size={16} /> : <Trash2 size={16} />}
+                      {busyId === u.id ? <Loader2 className="spin" size={14} /> : <Trash2 size={14} />}
                     </Button>
                   </td>
                 </tr>

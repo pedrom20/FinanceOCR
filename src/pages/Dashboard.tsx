@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Row, Col, Card, Alert } from 'react-bootstrap';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { Wallet, Receipt } from 'lucide-react';
 import { apiJson } from '../api';
 import { Invoice } from '../types';
 
@@ -43,27 +44,38 @@ export const Dashboard = () => {
 
   return (
     <div className="d-flex flex-column gap-4">
-      <h1 className="h3 fw-bold">Olá de novo! 👋</h1>
+      <div className="page-header">
+        <div>
+          <h1>Olá de novo! 👋</h1>
+          <p>Resumo das tuas despesas e faturas processadas.</p>
+        </div>
+      </div>
       {error && <Alert variant="danger">{error}</Alert>}
       <Row className="g-4">
         <Col md={6}>
-          <Card className="border-0 shadow-sm h-100">
-            <Card.Body>
-              <Card.Subtitle className="text-muted small mb-1">Gasto Total</Card.Subtitle>
-              <Card.Title className="display-6 fw-bold mb-0">{total.toFixed(2)} €</Card.Title>
-            </Card.Body>
+          <Card className="stat-card h-100">
+            <div className="stat-icon bg-success bg-opacity-10 text-success">
+              <Wallet size={20} />
+            </div>
+            <div>
+              <h6>Gasto Total</h6>
+              <h3 className="mb-0">{total.toFixed(2)} €</h3>
+            </div>
           </Card>
         </Col>
         <Col md={6}>
-          <Card className="border-0 shadow-sm h-100">
-            <Card.Body>
-              <Card.Subtitle className="text-muted small mb-1">Faturas Processadas</Card.Subtitle>
-              <Card.Title className="display-6 fw-bold mb-0">{count}</Card.Title>
-            </Card.Body>
+          <Card className="stat-card h-100">
+            <div className="stat-icon bg-primary bg-opacity-10" style={{ color: '#6366f1', backgroundColor: 'rgba(99,102,241,0.1)' }}>
+              <Receipt size={20} />
+            </div>
+            <div>
+              <h6>Faturas Processadas</h6>
+              <h3 className="mb-0">{count}</h3>
+            </div>
           </Card>
         </Col>
       </Row>
-      <Card className="border-0 shadow-sm">
+      <Card>
         <Card.Body>
           <Card.Title className="h6 fw-bold mb-4">Histórico de Despesas (últimos 6 meses)</Card.Title>
           <div style={{ height: 256 }}>

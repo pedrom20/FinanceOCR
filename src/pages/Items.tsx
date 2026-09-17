@@ -131,10 +131,10 @@ export const Items = () => {
 
   return (
     <div className="d-flex flex-column gap-3 mx-auto" style={{ maxWidth: 720 }}>
-      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
+      <div className="page-header">
         <div>
-          <h1 className="h3 fw-bold">Artigos</h1>
-          <p className="text-muted small mb-0">
+          <h1>Artigos</h1>
+          <p>
             Editar nome ou categoria aqui aplica-se a todas as compras desse artigo — e fica guardado para faturas futuras não criarem um artigo novo.
           </p>
         </div>
@@ -150,7 +150,7 @@ export const Items = () => {
         {groups.map(g => {
           const isOpen = expanded.has(g.key);
           return (
-            <Card key={g.key} className="border-0 shadow-sm">
+            <Card key={g.key}>
               <div className="d-flex align-items-center">
                 <button onClick={() => toggleExpanded(g.key)} className="btn d-flex align-items-center gap-3 p-3 text-start flex-grow-1 bg-transparent border-0">
                   {isOpen ? <ChevronDown size={16} className="text-muted flex-shrink-0" /> : <ChevronRight size={16} className="text-muted flex-shrink-0" />}

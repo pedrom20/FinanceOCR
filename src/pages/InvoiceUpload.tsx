@@ -69,7 +69,7 @@ export const InvoiceUpload = () => {
   }
 
   return (
-    <Card className="border-0 shadow-sm">
+    <Card>
       <Card.Header className="bg-light d-flex justify-content-between align-items-center">
         <span className="fw-bold">Confirmar Dados Extraídos</span>
         <Button variant="link" className="text-danger p-0 text-decoration-none" onClick={() => setInvoice(null)}>Cancelar</Button>

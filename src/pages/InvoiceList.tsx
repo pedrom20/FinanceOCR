@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Table, Alert, Button } from 'react-bootstrap';
+import { Table, Alert, Button, Card } from 'react-bootstrap';
 import { ChevronRight, Download, Trash2 } from 'lucide-react';
 import { apiFetch, apiJson } from '../api';
 import { Invoice } from '../types';
@@ -44,10 +44,15 @@ export const InvoiceList = () => {
 
   return (
     <div className="d-flex flex-column gap-3">
-      <h1 className="h3 fw-bold">Histórico de Compras</h1>
+      <div className="page-header">
+        <div>
+          <h1>Histórico de Compras</h1>
+          <p>Todas as faturas e talões que já processaste.</p>
+        </div>
+      </div>
       {error && <Alert variant="danger">{error}</Alert>}
 
-      <div className="bg-white rounded-3 shadow-sm border">
+      <Card className="overflow-hidden">
         <Table responsive hover className="mb-0 align-middle">
           <thead>
             <tr className="text-muted text-uppercase small">
@@ -71,24 +76,26 @@ export const InvoiceList = () => {
                 <td className="px-3 text-end fw-bold text-success">{inv.totalAmount.toFixed(2)} €</td>
                 <td className="px-3 text-center">
                   {inv.fileName && (
-                    <Button variant="link" className="text-muted p-0" onClick={() => downloadFile(inv.fileName!)}>
-                      <Download size={18} />
+                    <Button variant="light" className="btn-action btn-action-view" onClick={() => downloadFile(inv.fileName!)} title="Descarregar">
+                      <Download size={15} />
                     </Button>
                   )}
                 </td>
                 <td className="px-3 text-end text-nowrap">
-                  <Button variant="link" className="text-danger p-0 me-3" onClick={() => deleteInvoice(inv.id, inv.storeName)}>
-                    <Trash2 size={16} />
-                  </Button>
-                  <Link to={`/invoices/${inv.id}`} className="text-success">
-                    <ChevronRight size={18} />
-                  </Link>
+                  <div className="d-inline-flex align-items-center gap-2">
+                    <Button variant="light" className="btn-action btn-action-danger" onClick={() => deleteInvoice(inv.id, inv.storeName)} title="Apagar">
+                      <Trash2 size={14} />
+                    </Button>
+                    <Link to={`/invoices/${inv.id}`} className="btn-action btn-action-primary d-inline-flex" title="Ver detalhes">
+                      <ChevronRight size={16} />
+                    </Link>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </Table>
-      </div>
+      </Card>
       {invoices.length === 0 && !error && <p className="text-center text-muted py-4">Ainda não tens faturas guardadas.</p>}
     </div>
   );
