@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { PieChart, Download, Loader2, Filter, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
+import { Card, Form, Row, Col, Button, Spinner, Alert, Badge } from 'react-bootstrap';
+import { PieChart, Download, Loader2, Filter, ChevronDown, ChevronRight, Sparkles, TrendingUp } from 'lucide-react';
 import { apiFetch, apiJson, ApiError } from '../api';
+import { PriceHistoryModal } from '../components/PriceHistoryModal';
 
 interface ReportItem {
   invoiceId: string;
@@ -20,6 +22,7 @@ interface ReportItem {
 interface FiltersResponse {
   stores: string[];
   categories: string[];
+  locations: string[];
 }
 
 interface GroupedItem {
@@ -54,8 +57,9 @@ function formatQuantity(quantity: number, unit?: string): string {
 
 export const Reports = () => {
   const [downloading, setDownloading] = useState(false);
-  const [filterOptions, setFilterOptions] = useState<FiltersResponse>({ stores: [], categories: [] });
+  const [filterOptions, setFilterOptions] = useState<FiltersResponse>({ stores: [], categories: [], locations: [] });
   const [store, setStore] = useState('');
+  const [location, setLocation] = useState('');
   const [category, setCategory] = useState('');
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -68,6 +72,7 @@ export const Reports = () => {
   const [categorizing, setCategorizing] = useState(false);
   const [categorizeResult, setCategorizeResult] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
+  const [historyGroup, setHistoryGroup] = useState<GroupedItem | null>(null);
 
   const groups = useMemo(() => groupByProduct(items), [items]);
   const toggleExpanded = (productName: string) => {
@@ -88,6 +93,7 @@ export const Reports = () => {
     const handle = setTimeout(() => {
       const params = new URLSearchParams();
       if (store) params.set('store', store);
+      if (location) params.set('location', location);
       if (category) params.set('category', category);
       if (search) params.set('search', search);
       if (dateFrom) params.set('dateFrom', dateFrom);
@@ -104,7 +110,7 @@ export const Reports = () => {
         .finally(() => setLoading(false));
     }, 300);
     return () => clearTimeout(handle);
-  }, [store, category, search, dateFrom, dateTo, reloadKey]);
+  }, [store, location, category, search, dateFrom, dateTo, reloadKey]);
 
   const categorizeMissing = async () => {
     setCategorizing(true);
@@ -138,114 +144,151 @@ export const Reports = () => {
     }
   };
 
-  const inputClass = 'w-full border-b py-2 outline-none focus:border-emerald-500 text-sm bg-transparent';
-
   return (
-    <div className="space-y-6">
-      <div className="bg-white p-6 sm:p-12 rounded-3xl shadow-sm text-center">
-        <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
-          <PieChart size={40} />
-        </div>
-        <h2 className="text-xl sm:text-2xl font-bold mb-2">Relatórios Detalhados</h2>
-        <p className="text-slate-500 mb-8 max-w-sm mx-auto text-sm sm:text-base">Gere um PDF profissional com todas as suas despesas para contabilidade ou controlo pessoal.</p>
-        <button onClick={downloadPdf} disabled={downloading} className="w-full sm:w-auto bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 mx-auto hover:bg-black disabled:opacity-50 transition-all">
-          {downloading ? <Loader2 className="animate-spin" size={20} /> : <Download size={20} />}
-          {downloading ? 'A gerar...' : 'Descarregar PDF'}
-        </button>
-      </div>
-
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-4 sm:p-6 bg-slate-50 border-b flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Filter size={18} className="text-slate-400" />
-            <h3 className="font-bold text-slate-800">Filtrar Despesas</h3>
+    <div className="d-flex flex-column gap-4">
+      <Card className="border-0 shadow-sm text-center">
+        <Card.Body className="p-4 p-sm-5">
+          <div className="d-inline-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary rounded-circle p-3 mb-3" style={{ width: 72, height: 72 }}>
+            <PieChart size={36} />
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={categorizeMissing}
+          <Card.Title as="h2" className="h4 fw-bold">Relatórios Detalhados</Card.Title>
+          <Card.Text className="text-muted mx-auto mb-4" style={{ maxWidth: 420 }}>
+            Gera um PDF profissional com todas as tuas despesas para contabilidade ou controlo pessoal.
+          </Card.Text>
+          <Button variant="dark" disabled={downloading} onClick={downloadPdf} className="d-inline-flex align-items-center gap-2 px-4 py-2 fw-bold">
+            {downloading ? <Loader2 className="spin" size={20} /> : <Download size={20} />}
+            {downloading ? 'A gerar...' : 'Descarregar PDF'}
+          </Button>
+        </Card.Body>
+      </Card>
+
+      <Card className="border-0 shadow-sm">
+        <Card.Header className="bg-light d-flex flex-wrap align-items-center justify-content-between gap-3">
+          <div className="d-flex align-items-center gap-2">
+            <Filter size={18} className="text-muted" />
+            <span className="fw-bold">Filtrar Despesas</span>
+          </div>
+          <div className="d-flex align-items-center gap-3">
+            <Button
+              variant="outline-secondary"
+              size="sm"
               disabled={categorizing}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-emerald-600 disabled:opacity-40 border border-slate-200 rounded-lg px-3 py-1.5"
+              onClick={categorizeMissing}
+              className="d-inline-flex align-items-center gap-2"
             >
-              {categorizing ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />}
+              {categorizing ? <Loader2 className="spin" size={14} /> : <Sparkles size={14} />}
               {categorizing ? 'A categorizar...' : 'Categorizar artigos em falta'}
-            </button>
-            {categorizeResult && <span className="text-xs text-slate-500">{categorizeResult}</span>}
+            </Button>
+            {categorizeResult && <span className="text-muted small">{categorizeResult}</span>}
           </div>
+        </Card.Header>
+
+        <Card.Body>
+          <Row className="g-3">
+            <Col xs={12} sm={6} md={4}>
+              <Form.Group>
+                <Form.Label className="text-muted small text-uppercase fw-bold mb-1">Artigo</Form.Label>
+                <Form.Control size="sm" placeholder="ex: limão" value={search} onChange={e => setSearch(e.target.value)} />
+              </Form.Group>
+            </Col>
+            <Col xs={6} md={2}>
+              <Form.Group>
+                <Form.Label className="text-muted small text-uppercase fw-bold mb-1">Loja</Form.Label>
+                <Form.Select size="sm" value={store} onChange={e => setStore(e.target.value)}>
+                  <option value="">Todas</option>
+                  {filterOptions.stores.map(s => <option key={s} value={s}>{s}</option>)}
+                </Form.Select>
+              </Form.Group>
+            </Col>
+            <Col xs={6} md={2}>
+              <Form.Group>
+                <Form.Label className="text-muted small text-uppercase fw-bold mb-1">Localização</Form.Label>
+                <Form.Select size="sm" value={location} onChange={e => setLocation(e.target.value)}>
+                  <option value="">Todas</option>
+                  {filterOptions.locations.map(l => <option key={l} value={l}>{l}</option>)}
+                </Form.Select>
+              </Form.Group>
+            </Col>
+            <Col xs={6} md={2}>
+              <Form.Group>
+                <Form.Label className="text-muted small text-uppercase fw-bold mb-1">Categoria</Form.Label>
+                <Form.Select size="sm" value={category} onChange={e => setCategory(e.target.value)}>
+                  <option value="">Todas</option>
+                  {filterOptions.categories.map(c => <option key={c} value={c}>{c}</option>)}
+                </Form.Select>
+              </Form.Group>
+            </Col>
+            <Col xs={6} md={1}>
+              <Form.Group>
+                <Form.Label className="text-muted small text-uppercase fw-bold mb-1">De</Form.Label>
+                <Form.Control size="sm" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+              </Form.Group>
+            </Col>
+            <Col xs={6} md={1}>
+              <Form.Group>
+                <Form.Label className="text-muted small text-uppercase fw-bold mb-1">Até</Form.Label>
+                <Form.Control size="sm" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+              </Form.Group>
+            </Col>
+          </Row>
+        </Card.Body>
+
+        <div className="px-3 pb-2 d-flex align-items-center justify-content-between">
+          <span className="text-muted small">{items.length} artigo{items.length !== 1 ? 's' : ''}</span>
+          <span className="fs-4 fw-black text-success">{total.toFixed(2)} €</span>
         </div>
 
-        <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-          <div className="col-span-2 sm:col-span-1">
-            <label className="text-xs font-bold text-slate-400 uppercase">Artigo</label>
-            <input className={inputClass} placeholder="ex: limão" value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-xs font-bold text-slate-400 uppercase">Loja</label>
-            <select className={inputClass} value={store} onChange={e => setStore(e.target.value)}>
-              <option value="">Todas</option>
-              {filterOptions.stores.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-bold text-slate-400 uppercase">Categoria</label>
-            <select className={inputClass} value={category} onChange={e => setCategory(e.target.value)}>
-              <option value="">Todas</option>
-              {filterOptions.categories.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-bold text-slate-400 uppercase">De</label>
-            <input type="date" className={inputClass} value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-xs font-bold text-slate-400 uppercase">Até</label>
-            <input type="date" className={inputClass} value={dateTo} onChange={e => setDateTo(e.target.value)} />
-          </div>
-        </div>
-
-        <div className="px-4 sm:px-6 pb-2 flex items-center justify-between">
-          <span className="text-sm text-slate-400">{items.length} artigo{items.length !== 1 ? 's' : ''}</span>
-          <span className="text-xl font-black text-emerald-600">{total.toFixed(2)} €</span>
-        </div>
-
-        {error && <p className="text-red-500 text-sm px-4 sm:px-6">{error}</p>}
+        {error && <Alert variant="danger" className="mx-3">{error}</Alert>}
         {loading && (
-          <div className="flex justify-center py-6"><Loader2 className="animate-spin text-emerald-500" size={24} /></div>
+          <div className="d-flex justify-content-center py-4"><Spinner animation="border" variant="success" size="sm" /></div>
         )}
 
         {!loading && groups.length > 0 && (
-          <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-2">
+          <Card.Body className="pt-0 d-flex flex-column gap-2">
             {groups.map(group => {
               const isOpen = expanded.has(group.productName);
               return (
-                <div key={group.productName} className="border border-slate-100 rounded-xl overflow-hidden">
-                  <button
-                    onClick={() => toggleExpanded(group.productName)}
-                    className="w-full flex items-center gap-3 p-3 text-left hover:bg-slate-50"
-                  >
-                    {isOpen ? <ChevronDown size={16} className="text-slate-400 shrink-0" /> : <ChevronRight size={16} className="text-slate-400 shrink-0" />}
-                    <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-slate-700 text-sm truncate">{group.productName}</div>
-                      <div className="mt-0.5 text-xs text-slate-400 flex flex-wrap gap-x-3 gap-y-1">
-                        <span>{group.count} compra{group.count !== 1 ? 's' : ''}</span>
-                        {group.category && <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">{group.category}</span>}
+                <div key={group.productName} className="border rounded-3 overflow-hidden">
+                  <div className="d-flex align-items-center">
+                    <button
+                      onClick={() => toggleExpanded(group.productName)}
+                      className="btn d-flex align-items-center gap-3 p-3 text-start flex-grow-1 bg-transparent border-0"
+                    >
+                      {isOpen ? <ChevronDown size={16} className="text-muted flex-shrink-0" /> : <ChevronRight size={16} className="text-muted flex-shrink-0" />}
+                      <div className="min-w-0 flex-grow-1 text-truncate">
+                        <div className="fw-semibold small text-truncate">{group.productName}</div>
+                        <div className="mt-1 text-muted d-flex flex-wrap gap-2" style={{ fontSize: '0.75rem' }}>
+                          <span>{group.count} compra{group.count !== 1 ? 's' : ''}</span>
+                          {group.category && <Badge bg="success" className="bg-opacity-25 text-success fw-normal">{group.category}</Badge>}
+                        </div>
                       </div>
-                    </div>
-                    <span className="font-bold text-slate-800 text-sm shrink-0">{group.totalSpent.toFixed(2)} €</span>
-                  </button>
+                      <span className="fw-bold small flex-shrink-0">{group.totalSpent.toFixed(2)} €</span>
+                    </button>
+                    <Button
+                      variant="link"
+                      className="text-muted flex-shrink-0 me-2"
+                      title="Ver variação de preço"
+                      onClick={() => setHistoryGroup(group)}
+                    >
+                      <TrendingUp size={16} />
+                    </Button>
+                  </div>
 
                   {isOpen && (
-                    <div className="divide-y divide-slate-100 border-t border-slate-100 bg-slate-50">
+                    <div className="border-top bg-light">
                       {group.occurrences.map((item, idx) => (
                         <Link
                           key={idx}
                           to={`/invoices/${item.invoiceId}`}
-                          className="flex items-center justify-between gap-3 px-3 py-2.5 pl-8 text-sm hover:bg-white"
+                          className="d-flex align-items-center justify-content-between gap-3 px-3 py-2 ps-5 small text-decoration-none text-body border-bottom"
                         >
-                          <div className="min-w-0">
-                            <div className="text-slate-600 truncate">{item.storeName}</div>
-                            <div className="text-xs text-slate-400">{item.invoiceDate} · {formatQuantity(item.quantity, item.quantityUnit)} × {item.unitPrice.toFixed(2)} €{item.quantityUnit === 'kg' ? '/kg' : ''}</div>
+                          <div className="min-w-0 text-truncate">
+                            <div className="text-muted text-truncate">{item.storeName}</div>
+                            <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                              {item.invoiceDate} · {formatQuantity(item.quantity, item.quantityUnit)} × {item.unitPrice.toFixed(2)} €{item.quantityUnit === 'kg' ? '/kg' : ''}
+                            </div>
                           </div>
-                          <span className="font-semibold text-slate-700 shrink-0">{item.totalPrice.toFixed(2)} €</span>
+                          <span className="fw-semibold flex-shrink-0">{item.totalPrice.toFixed(2)} €</span>
                         </Link>
                       ))}
                     </div>
@@ -253,13 +296,21 @@ export const Reports = () => {
                 </div>
               );
             })}
-          </div>
+          </Card.Body>
         )}
 
         {!loading && items.length === 0 && !error && (
-          <p className="text-center text-slate-400 text-sm py-8">Sem artigos para os filtros selecionados.</p>
+          <p className="text-center text-muted small py-4">Sem artigos para os filtros selecionados.</p>
         )}
-      </div>
+      </Card>
+
+      {historyGroup && (
+        <PriceHistoryModal
+          productName={historyGroup.productName}
+          occurrences={historyGroup.occurrences}
+          onClose={() => setHistoryGroup(null)}
+        />
+      )}
     </div>
   );
 };

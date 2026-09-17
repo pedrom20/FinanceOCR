@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Row, Col, Card, Alert } from 'react-bootstrap';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { apiJson } from '../api';
 import { Invoice } from '../types';
@@ -41,31 +42,41 @@ export const Dashboard = () => {
   const chartData = invoices ? monthlyTotals(invoices) : [];
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-slate-800">Olá de novo! 👋</h1>
-      {error && <p className="text-red-500 text-sm">{error}</p>}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <p className="text-sm text-slate-500">Gasto Total</p>
-          <h2 className="text-3xl font-black text-slate-900 mt-1">{total.toFixed(2)} €</h2>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <p className="text-sm text-slate-500">Faturas Processadas</p>
-          <h2 className="text-3xl font-black text-slate-900 mt-1">{count}</h2>
-        </div>
-      </div>
-      <div className="bg-white p-4 sm:p-8 rounded-2xl shadow-sm border border-slate-100">
-        <h3 className="font-bold text-slate-700 mb-6">Histórico de Despesas (últimos 6 meses)</h3>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData}>
-              <XAxis dataKey="name" axisLine={false} tickLine={false} />
-              <Tooltip cursor={{ fill: '#f8fafc' }} formatter={(value: number) => `${value.toFixed(2)} €`} />
-              <Bar dataKey="total" fill="#10b981" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+    <div className="d-flex flex-column gap-4">
+      <h1 className="h3 fw-bold">Olá de novo! 👋</h1>
+      {error && <Alert variant="danger">{error}</Alert>}
+      <Row className="g-4">
+        <Col md={6}>
+          <Card className="border-0 shadow-sm h-100">
+            <Card.Body>
+              <Card.Subtitle className="text-muted small mb-1">Gasto Total</Card.Subtitle>
+              <Card.Title className="display-6 fw-bold mb-0">{total.toFixed(2)} €</Card.Title>
+            </Card.Body>
+          </Card>
+        </Col>
+        <Col md={6}>
+          <Card className="border-0 shadow-sm h-100">
+            <Card.Body>
+              <Card.Subtitle className="text-muted small mb-1">Faturas Processadas</Card.Subtitle>
+              <Card.Title className="display-6 fw-bold mb-0">{count}</Card.Title>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+      <Card className="border-0 shadow-sm">
+        <Card.Body>
+          <Card.Title className="h6 fw-bold mb-4">Histórico de Despesas (últimos 6 meses)</Card.Title>
+          <div style={{ height: 256 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                <Tooltip cursor={{ fill: '#f8fafc' }} formatter={(value: number) => `${value.toFixed(2)} €`} />
+                <Bar dataKey="total" fill="#059669" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card.Body>
+      </Card>
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Card, Form, Button, Alert, Spinner } from 'react-bootstrap';
 import { Store as StoreIcon, Pencil, Check, X, Sparkles, Loader2, ChevronDown, ChevronRight, MapPin } from 'lucide-react';
 import { apiFetch, apiJson, ApiError } from '../api';
 
@@ -87,97 +88,107 @@ export const Stores = () => {
     }
   };
 
-  if (loading) return null;
+  if (loading) return <div className="d-flex justify-content-center py-5"><Spinner animation="border" variant="success" /></div>;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
+    <div className="d-flex flex-column gap-3 mx-auto" style={{ maxWidth: 720 }}>
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Lojas</h1>
-        <p className="text-sm text-slate-400 mt-1">Comerciantes agrupados pelo NIF das tuas faturas. Editar aqui aplica-se a todas as faturas desse comerciante. Quando um comerciante tem mais que uma loja (ex: Lidl), a divisão por loja fica visível ao expandir.</p>
+        <h1 className="h3 fw-bold">Lojas</h1>
+        <p className="text-muted small mb-0">
+          Comerciantes agrupados pelo NIF das tuas faturas. Editar aqui aplica-se a todas as faturas desse comerciante.
+          Quando um comerciante tem mais que uma loja (ex: Lidl), a divisão por loja fica visível ao expandir.
+        </p>
       </div>
-      {error && <p className="text-red-500 text-sm">{error}</p>}
+      {error && <Alert variant="danger">{error}</Alert>}
 
-      <div className="space-y-3">
+      <div className="d-flex flex-column gap-3">
         {stores.map(s => {
           const key = keyOf(s);
           const editing = editingKey === key;
           return (
-            <div key={key} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-              {editing ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    autoFocus
-                    className="flex-1 min-w-0 border-b py-1 outline-none focus:border-emerald-500 font-bold text-slate-800"
-                    value={nameInput}
-                    onChange={e => setNameInput(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && save(s)}
-                  />
-                  <button onClick={() => suggestName(s)} disabled={suggesting} className="text-slate-400 hover:text-emerald-600 disabled:opacity-50 shrink-0" title="Sugerir nome com IA">
-                    {suggesting ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
-                  </button>
-                  <button onClick={() => save(s)} disabled={saving} className="text-emerald-600 hover:text-emerald-700 disabled:opacity-50 shrink-0">
-                    <Check size={18} />
-                  </button>
-                  <button onClick={() => setEditingKey(null)} className="text-slate-400 hover:text-red-500 shrink-0">
-                    <X size={18} />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {s.locations.length > 0 ? (
-                        <button onClick={() => toggleExpanded(key)} className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center shrink-0">
-                          {expanded.has(key) ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                        </button>
-                      ) : (
-                        <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center shrink-0">
-                          <StoreIcon size={18} />
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-800 truncate">{s.storeName}</span>
-                          <button onClick={() => startEditing(s)} className="text-slate-300 hover:text-emerald-600 shrink-0">
-                            <Pencil size={14} />
-                          </button>
-                        </div>
-                        <div className="text-xs text-slate-400 truncate">
-                          {s.storeNif && <>NIF: {s.storeNif} · </>}
-                          {s.invoiceCount} fatura{s.invoiceCount !== 1 ? 's' : ''}
-                          {s.locations.length > 0 && <> · {s.locations.length} lojas</>}
+            <Card key={key} className="border-0 shadow-sm">
+              <Card.Body>
+                {editing ? (
+                  <div className="d-flex align-items-center gap-2">
+                    <Form.Control
+                      autoFocus
+                      className="fw-bold"
+                      value={nameInput}
+                      onChange={e => setNameInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && save(s)}
+                    />
+                    <Button variant="link" className="text-muted flex-shrink-0" disabled={suggesting} title="Sugerir nome com IA" onClick={() => suggestName(s)}>
+                      {suggesting ? <Loader2 className="spin" size={16} /> : <Sparkles size={16} />}
+                    </Button>
+                    <Button variant="link" className="text-success flex-shrink-0" disabled={saving} onClick={() => save(s)}>
+                      <Check size={18} />
+                    </Button>
+                    <Button variant="link" className="text-danger flex-shrink-0" onClick={() => setEditingKey(null)}>
+                      <X size={18} />
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="d-flex align-items-center justify-content-between gap-3">
+                      <div className="d-flex align-items-center gap-3 min-w-0">
+                        {s.locations.length > 0 ? (
+                          <Button
+                            variant="light"
+                            className="rounded-circle d-flex align-items-center justify-content-center text-success flex-shrink-0 p-0"
+                            style={{ width: 40, height: 40 }}
+                            onClick={() => toggleExpanded(key)}
+                          >
+                            {expanded.has(key) ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                          </Button>
+                        ) : (
+                          <div className="bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 40, height: 40 }}>
+                            <StoreIcon size={18} />
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="d-flex align-items-center gap-2">
+                            <span className="fw-bold text-truncate">{s.storeName}</span>
+                            <Button variant="link" className="text-muted p-0 flex-shrink-0" onClick={() => startEditing(s)}>
+                              <Pencil size={14} />
+                            </Button>
+                          </div>
+                          <div className="text-muted small text-truncate">
+                            {s.storeNif && <>NIF: {s.storeNif} · </>}
+                            {s.invoiceCount} fatura{s.invoiceCount !== 1 ? 's' : ''}
+                            {s.locations.length > 0 && <> · {s.locations.length} lojas</>}
+                          </div>
                         </div>
                       </div>
+                      <div className="text-end flex-shrink-0">
+                        <div className="fw-black text-success">{s.totalSpent.toFixed(2)} €</div>
+                        <div className="text-muted small">{s.lastPurchase?.slice(0, 10)}</div>
+                      </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="font-black text-emerald-600">{s.totalSpent.toFixed(2)} €</div>
-                      <div className="text-xs text-slate-400">{s.lastPurchase?.slice(0, 10)}</div>
-                    </div>
-                  </div>
 
-                  {expanded.has(key) && s.locations.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
-                      {s.locations.map(loc => (
-                        <div key={loc.location || '(sem loja)'} className="flex items-center justify-between gap-3 pl-[3.25rem] text-sm">
-                          <div className="flex items-center gap-2 min-w-0 text-slate-600">
-                            <MapPin size={14} className="text-slate-300 shrink-0" />
-                            <span className="truncate">{loc.location || 'Sem loja identificada'}</span>
+                    {expanded.has(key) && s.locations.length > 0 && (
+                      <div className="mt-3 pt-3 border-top d-flex flex-column gap-2">
+                        {s.locations.map(loc => (
+                          <div key={loc.location || '(sem loja)'} className="d-flex align-items-center justify-content-between gap-3 small" style={{ paddingLeft: '3.25rem' }}>
+                            <div className="d-flex align-items-center gap-2 min-w-0 text-muted">
+                              <MapPin size={14} className="flex-shrink-0" />
+                              <span className="text-truncate">{loc.location || 'Sem loja identificada'}</span>
+                            </div>
+                            <div className="text-end flex-shrink-0">
+                              <span className="fw-semibold">{loc.totalSpent.toFixed(2)} €</span>
+                              <span className="text-muted ms-2">{loc.invoiceCount}×</span>
+                            </div>
                           </div>
-                          <div className="text-right shrink-0">
-                            <span className="font-semibold text-slate-700">{loc.totalSpent.toFixed(2)} €</span>
-                            <span className="text-xs text-slate-400 ml-2">{loc.invoiceCount}×</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </Card.Body>
+            </Card>
           );
         })}
         {stores.length === 0 && !error && (
-          <p className="text-center text-slate-400 text-sm py-8">Ainda não tens faturas guardadas.</p>
+          <p className="text-center text-muted small py-4">Ainda não tens faturas guardadas.</p>
         )}
       </div>
     </div>

@@ -36,5 +36,5 @@ export const GoogleSignInButton = ({ onCredential }: { onCredential: (credential
 
   if (!CLIENT_ID) return null;
 
-  return <div ref={containerRef} className="flex justify-center" />;
+  return <div ref={containerRef} className="d-flex justify-content-center" />;
 };

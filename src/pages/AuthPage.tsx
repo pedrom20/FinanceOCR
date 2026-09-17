@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Container, Card, Form, Button, Alert } from 'react-bootstrap';
 import { Receipt } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { ApiError } from '../api';
@@ -43,47 +44,45 @@ export const AuthPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden">
-        <div className="p-8 bg-slate-900 text-white flex flex-col items-center">
-          <div className="p-3 bg-emerald-500 rounded-xl mb-4">
-            <Receipt size={32} />
+    <Container fluid className="d-flex align-items-center justify-content-center min-vh-100 bg-light px-3">
+      <Card style={{ maxWidth: 420 }} className="w-100 shadow-lg border-0 overflow-hidden">
+        <div className="bg-dark text-white text-center p-4">
+          <div className="d-inline-flex bg-success bg-opacity-25 rounded-3 p-3 mb-3">
+            <Receipt size={32} className="text-success" />
           </div>
-          <h1 className="text-2xl font-bold">FinOCR Manager</h1>
-          <p className="text-slate-400 text-sm">Controle as suas finanças num piscar de olhos</p>
+          <h1 className="h4 fw-bold mb-1">FinOCR Manager</h1>
+          <p className="text-white-50 small mb-0">Controle as suas finanças num piscar de olhos</p>
         </div>
-        <div className="p-8">
-          <form onSubmit={handleAuth} className="space-y-4">
+        <Card.Body className="p-4">
+          <Form onSubmit={handleAuth}>
             {!isLogin && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700">Nome</label>
-                <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full mt-1 px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-500" required />
-              </div>
+              <Form.Group className="mb-3">
+                <Form.Label>Nome</Form.Label>
+                <Form.Control type="text" value={name} onChange={e => setName(e.target.value)} required />
+              </Form.Group>
             )}
-            <div>
-              <label className="block text-sm font-medium text-slate-700">Email</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full mt-1 px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-500" required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700">Password</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full mt-1 px-4 py-2 border rounded-lg outline-none focus:ring-2 focus:ring-emerald-500" required minLength={6} />
-            </div>
-            {error && <p className="text-red-500 text-xs">{error}</p>}
-            <button disabled={submitting} className="w-full bg-emerald-600 text-white py-3 rounded-lg font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50">
+            <Form.Group className="mb-3">
+              <Form.Label>Email</Form.Label>
+              <Form.Control type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Password</Form.Label>
+              <Form.Control type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} />
+            </Form.Group>
+            {error && <Alert variant="danger" className="py-2 small">{error}</Alert>}
+            <Button type="submit" variant="primary" disabled={submitting} className="w-100 fw-bold">
               {submitting ? 'A processar...' : isLogin ? 'Entrar' : 'Registar'}
-            </button>
-          </form>
-          <button onClick={() => { setIsLogin(!isLogin); setError(''); }} className="w-full mt-4 text-sm text-slate-500 hover:text-emerald-600">
+            </Button>
+          </Form>
+          <Button variant="link" className="w-100 mt-3 text-decoration-none" onClick={() => { setIsLogin(!isLogin); setError(''); }}>
             {isLogin ? 'Não tem conta? Registe-se' : 'Já tem conta? Faça Login'}
-          </button>
-          <div className="my-4 flex items-center gap-3 text-xs text-slate-400">
-            <div className="flex-1 h-px bg-slate-200" />
-            ou
-            <div className="flex-1 h-px bg-slate-200" />
+          </Button>
+          <div className="d-flex align-items-center gap-3 my-3 text-muted small">
+            <hr className="flex-grow-1" /> ou <hr className="flex-grow-1" />
           </div>
           <GoogleSignInButton onCredential={handleGoogleCredential} />
-        </div>
-      </div>
-    </div>
+        </Card.Body>
+      </Card>
+    </Container>
   );
 };

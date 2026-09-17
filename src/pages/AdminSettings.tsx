@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Card, Form, Button, Alert, Badge } from 'react-bootstrap';
 import { CheckCircle2, ExternalLink, Loader2, Save, ShieldCheck, XCircle, Zap } from 'lucide-react';
 import { apiJson, ApiError } from '../api';
 
@@ -91,108 +92,96 @@ export const AdminSettings = () => {
     }
   };
 
-  if (!settings) return error ? <p className="text-red-500 text-sm">{error}</p> : null;
+  if (!settings) return error ? <Alert variant="danger">{error}</Alert> : null;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4">
-      <h1 className="text-2xl font-bold text-slate-800">Definições</h1>
+    <div className="d-flex flex-column gap-3 mx-auto" style={{ maxWidth: 640 }}>
+      <h1 className="h3 fw-bold">Definições</h1>
 
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-4 sm:p-6 bg-slate-50 border-b flex items-center gap-3">
-          <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shrink-0">
+      <Card className="border-0 shadow-sm">
+        <Card.Header className="bg-light d-flex align-items-center gap-3">
+          <div className="bg-success bg-opacity-10 text-success rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 40, height: 40 }}>
             <ShieldCheck size={20} />
           </div>
           <div>
-            <h2 className="font-bold text-slate-800">Fornecedores de IA</h2>
-            <p className="text-xs text-slate-400">Usada como fallback do OCR e para sugerir categorias dos artigos. Podes configurar vários e escolher qual está ativo.</p>
+            <h2 className="h6 fw-bold mb-0">Fornecedores de IA</h2>
+            <p className="text-muted small mb-0">Usada como fallback do OCR e para sugerir categorias dos artigos. Podes configurar vários e escolher qual está ativo.</p>
           </div>
-        </div>
+        </Card.Header>
 
-        <div className="divide-y divide-slate-100">
-          {Object.entries(settings.providers).map(([key, provider]) => (
-            <div key={key} className="p-4 sm:p-6 space-y-3">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="radio"
-                  name="activeProvider"
-                  checked={activeProvider === key}
-                  onChange={() => setActiveProvider(key)}
-                  className="accent-emerald-600"
+        {Object.entries(settings.providers).map(([key, provider]) => (
+          <Card.Body key={key} className="border-bottom d-flex flex-column gap-3">
+            <Form.Check
+              type="radio"
+              id={`provider-${key}`}
+              name="activeProvider"
+              checked={activeProvider === key}
+              onChange={() => setActiveProvider(key)}
+              label={
+                <span className="d-inline-flex align-items-center gap-2">
+                  <span className="fw-bold">{provider.label}</span>
+                  {provider.configured && <Badge bg="success" className="bg-opacity-25 text-success fw-normal">configurada</Badge>}
+                </span>
+              }
+            />
+
+            <div className="ps-4 d-flex flex-column gap-3">
+              {PROVIDER_HELP[key] && (
+                <a href={PROVIDER_HELP[key].url} target="_blank" rel="noopener noreferrer" className="d-inline-flex align-items-center gap-2 small text-success text-decoration-none">
+                  <ExternalLink size={12} />
+                  Como obter: {PROVIDER_HELP[key].steps}
+                </a>
+              )}
+              <Form.Group>
+                <Form.Label className="text-muted small text-uppercase fw-bold">Chave API</Form.Label>
+                <Form.Control
+                  type="password"
+                  autoComplete="off"
+                  placeholder={provider.configured ? '•••••••••••••••• (configurada — deixa em branco para manter)' : 'Não configurada'}
+                  value={apiKeyInputs[key] ?? ''}
+                  onChange={e => setApiKeyInputs(prev => ({ ...prev, [key]: e.target.value }))}
                 />
-                <span className="font-bold text-slate-800">{provider.label}</span>
-                {provider.configured && (
-                  <span className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">configurada</span>
-                )}
-              </label>
+              </Form.Group>
+              <Form.Group>
+                <Form.Label className="text-muted small text-uppercase fw-bold">Modelo</Form.Label>
+                <Form.Control
+                  placeholder={provider.defaultModel}
+                  value={modelInputs[key] ?? ''}
+                  onChange={e => setModelInputs(prev => ({ ...prev, [key]: e.target.value }))}
+                />
+              </Form.Group>
 
-              <div className="pl-7 space-y-3">
-                {PROVIDER_HELP[key] && (
-                  <a
-                    href={PROVIDER_HELP[key].url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700"
-                  >
-                    <ExternalLink size={12} />
-                    Como obter: {PROVIDER_HELP[key].steps}
-                  </a>
+              <div className="d-flex align-items-center gap-3">
+                <Button
+                  variant="outline-secondary"
+                  size="sm"
+                  disabled={testing[key] || (!provider.configured && !apiKeyInputs[key])}
+                  onClick={() => testProvider(key)}
+                  className="d-inline-flex align-items-center gap-2"
+                >
+                  {testing[key] ? <Loader2 className="spin" size={14} /> : <Zap size={14} />}
+                  {testing[key] ? 'A testar...' : 'Testar'}
+                </Button>
+                {testResult[key] && (
+                  <span className={`d-inline-flex align-items-center gap-2 small ${testResult[key]!.ok ? 'text-success' : 'text-danger'}`}>
+                    {testResult[key]!.ok ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+                    {testResult[key]!.message}
+                  </span>
                 )}
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase">Chave API</label>
-                  <input
-                    type="password"
-                    autoComplete="off"
-                    className="w-full mt-1 border-b py-2 outline-none focus:border-emerald-500"
-                    placeholder={provider.configured ? '•••••••••••••••• (configurada — deixa em branco para manter)' : 'Não configurada'}
-                    value={apiKeyInputs[key] ?? ''}
-                    onChange={e => setApiKeyInputs(prev => ({ ...prev, [key]: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase">Modelo</label>
-                  <input
-                    className="w-full mt-1 border-b py-2 outline-none focus:border-emerald-500"
-                    placeholder={provider.defaultModel}
-                    value={modelInputs[key] ?? ''}
-                    onChange={e => setModelInputs(prev => ({ ...prev, [key]: e.target.value }))}
-                  />
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => testProvider(key)}
-                    disabled={testing[key] || (!provider.configured && !apiKeyInputs[key])}
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-emerald-600 disabled:opacity-40 disabled:hover:text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5"
-                  >
-                    {testing[key] ? <Loader2 className="animate-spin" size={14} /> : <Zap size={14} />}
-                    {testing[key] ? 'A testar...' : 'Testar'}
-                  </button>
-                  {testResult[key] && (
-                    <span className={`inline-flex items-center gap-1.5 text-xs ${testResult[key].ok ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {testResult[key].ok ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
-                      {testResult[key].message}
-                    </span>
-                  )}
-                </div>
               </div>
             </div>
-          ))}
-        </div>
+          </Card.Body>
+        ))}
 
-        <div className="p-4 sm:p-6 border-t">
-          {message && <p className="text-emerald-600 text-sm mb-3">{message}</p>}
-          {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
-
-          <button
-            onClick={save}
-            disabled={saving}
-            className="w-full sm:w-auto bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+        <Card.Body>
+          {message && <Alert variant="success" className="py-2 small">{message}</Alert>}
+          {error && <Alert variant="danger" className="py-2 small">{error}</Alert>}
+          <Button variant="primary" disabled={saving} onClick={save} className="d-inline-flex align-items-center gap-2 fw-bold px-4">
+            {saving ? <Loader2 className="spin" size={18} /> : <Save size={18} />}
             {saving ? 'A guardar...' : 'Guardar'}
-          </button>
-        </div>
-      </div>
+          </Button>
+        </Card.Body>
+      </Card>
     </div>
   );
 };

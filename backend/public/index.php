@@ -12,6 +12,7 @@ use FinanceOcr\Controllers\OcrController;
 use FinanceOcr\Controllers\ReportController;
 use FinanceOcr\Controllers\SettingsController;
 use FinanceOcr\Controllers\StoreController;
+use FinanceOcr\Controllers\UserController;
 
 $router = new Router();
 
@@ -49,5 +50,9 @@ $router->get('/api/reports/items', fn () => ReportController::items());
 $router->get('/api/settings', fn () => SettingsController::show());
 $router->post('/api/settings', fn () => SettingsController::update());
 $router->post('/api/settings/test', fn () => SettingsController::test());
+
+$router->get('/api/users', fn () => UserController::list());
+$router->put('/api/users/{id}/role', fn (array $params) => UserController::updateRole($params));
+$router->delete('/api/users/{id}', fn (array $params) => UserController::destroy($params));
 
 $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);

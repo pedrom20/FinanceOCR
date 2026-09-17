@@ -320,11 +320,21 @@ class InvoiceRepository
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
+    /** Localizações/filiais distintas deste utilizador, para o dropdown de filtro do relatório. */
+    public static function listDistinctLocations(int $userId): array
+    {
+        $stmt = Database::get()->prepare(
+            "SELECT DISTINCT store_location FROM invoices WHERE user_id = ? AND store_location != '' ORDER BY store_location"
+        );
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+    }
+
     /**
      * Artigos deste utilizador que cumprem os filtros do relatório, com a
      * informação da fatura a que pertencem. Todos os filtros são opcionais.
      *
-     * @param array{store?:string,category?:string,search?:string,dateFrom?:string,dateTo?:string} $filters
+     * @param array{store?:string,location?:string,category?:string,search?:string,dateFrom?:string,dateTo?:string} $filters
      */
     public static function searchItems(int $userId, array $filters): array
     {
@@ -338,6 +348,10 @@ class InvoiceRepository
         if (!empty($filters['store'])) {
             $sql .= ' AND i.store_name = ?';
             $params[] = $filters['store'];
+        }
+        if (!empty($filters['location'])) {
+            $sql .= ' AND i.store_location = ?';
+            $params[] = $filters['location'];
         }
         if (!empty($filters['category'])) {
             $sql .= ' AND ii.category = ?';

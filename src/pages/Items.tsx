@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Pencil, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { Card, Form, Button, Modal, Alert, Spinner, Badge } from 'react-bootstrap';
+import { Pencil, ChevronDown, ChevronRight, Loader2, TrendingUp } from 'lucide-react';
 import { apiJson, apiFetch, ApiError } from '../api';
-import { Modal } from '../components/Modal';
+import { PriceHistoryModal } from '../components/PriceHistoryModal';
 
 interface ReportItem {
   invoiceId: string;
@@ -61,6 +62,7 @@ export const Items = () => {
   const [categoryInput, setCategoryInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [historyGroup, setHistoryGroup] = useState<Group | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -125,120 +127,116 @@ export const Items = () => {
     }
   };
 
-  if (loading) return null;
+  if (loading) return <div className="d-flex justify-content-center py-5"><Spinner animation="border" variant="success" /></div>;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="d-flex flex-column gap-3 mx-auto" style={{ maxWidth: 720 }}>
+      <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Artigos</h1>
-          <p className="text-sm text-slate-400 mt-1">Editar nome ou categoria aqui aplica-se a todas as compras desse artigo — e fica guardado para faturas futuras não criarem um artigo novo.</p>
+          <h1 className="h3 fw-bold">Artigos</h1>
+          <p className="text-muted small mb-0">
+            Editar nome ou categoria aqui aplica-se a todas as compras desse artigo — e fica guardado para faturas futuras não criarem um artigo novo.
+          </p>
         </div>
-        <select
-          value={groupBy}
-          onChange={e => setGroupBy(e.target.value as GroupBy)}
-          className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white shrink-0"
-        >
+        <Form.Select style={{ width: 'auto' }} size="sm" value={groupBy} onChange={e => setGroupBy(e.target.value as GroupBy)}>
           <option value="product">Agrupar por Artigo</option>
           <option value="store">Agrupar por Loja</option>
           <option value="category">Agrupar por Categoria</option>
-        </select>
+        </Form.Select>
       </div>
-      {error && <p className="text-red-500 text-sm">{error}</p>}
+      {error && <Alert variant="danger">{error}</Alert>}
 
-      <div className="space-y-2">
+      <div className="d-flex flex-column gap-2">
         {groups.map(g => {
           const isOpen = expanded.has(g.key);
           return (
-            <div key={g.key} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-              <button onClick={() => toggleExpanded(g.key)} className="w-full flex items-center gap-3 p-4 text-left hover:bg-slate-50">
-                {isOpen ? <ChevronDown size={16} className="text-slate-400 shrink-0" /> : <ChevronRight size={16} className="text-slate-400 shrink-0" />}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-800 truncate">{g.key}</span>
-                    {groupBy === 'product' && (
-                      <span
-                        role="button"
-                        onClick={e => { e.stopPropagation(); startEditing(g); }}
-                        className="text-slate-300 hover:text-emerald-600 shrink-0"
-                      >
-                        <Pencil size={14} />
-                      </span>
-                    )}
+            <Card key={g.key} className="border-0 shadow-sm">
+              <div className="d-flex align-items-center">
+                <button onClick={() => toggleExpanded(g.key)} className="btn d-flex align-items-center gap-3 p-3 text-start flex-grow-1 bg-transparent border-0">
+                  {isOpen ? <ChevronDown size={16} className="text-muted flex-shrink-0" /> : <ChevronRight size={16} className="text-muted flex-shrink-0" />}
+                  <div className="min-w-0 flex-grow-1">
+                    <div className="d-flex align-items-center gap-2">
+                      <span className="fw-bold text-truncate">{g.key}</span>
+                      {groupBy === 'product' && (
+                        <span role="button" onClick={e => { e.stopPropagation(); startEditing(g); }} className="text-muted flex-shrink-0">
+                          <Pencil size={14} />
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-muted small d-flex flex-wrap align-items-center gap-2">
+                      <span>{g.count} compra{g.count !== 1 ? 's' : ''}</span>
+                      {groupBy === 'product' && g.category && (
+                        <Badge bg="success" className="bg-opacity-25 text-success fw-normal">{g.category}</Badge>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-400 flex items-center flex-wrap gap-x-2 gap-y-1">
-                    <span>{g.count} compra{g.count !== 1 ? 's' : ''}</span>
-                    {groupBy === 'product' && g.category && (
-                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">{g.category}</span>
-                    )}
-                  </div>
-                </div>
-                <span className="font-black text-emerald-600 shrink-0">{g.totalSpent.toFixed(2)} €</span>
-              </button>
+                  <span className="fw-black text-success flex-shrink-0">{g.totalSpent.toFixed(2)} €</span>
+                </button>
+                {groupBy === 'product' && (
+                  <Button variant="link" className="text-muted flex-shrink-0 me-2" title="Ver variação de preço" onClick={() => setHistoryGroup(g)}>
+                    <TrendingUp size={16} />
+                  </Button>
+                )}
+              </div>
 
               {isOpen && (
-                <div className="divide-y divide-slate-100 border-t border-slate-100 bg-slate-50">
+                <div className="border-top bg-light">
                   {g.occurrences.map((item, idx) => (
-                    <Link key={idx} to={`/invoices/${item.invoiceId}`} className="flex items-center justify-between gap-3 px-4 py-2.5 pl-11 text-sm hover:bg-white">
-                      <div className="min-w-0">
-                        <div className="text-slate-600 truncate">
+                    <Link key={idx} to={`/invoices/${item.invoiceId}`} className="d-flex align-items-center justify-content-between gap-3 px-3 py-2 ps-5 small text-decoration-none text-body border-bottom">
+                      <div className="min-w-0 text-truncate">
+                        <div className="text-muted text-truncate">
                           {groupBy === 'product' ? item.storeName : item.productName}
                         </div>
-                        <div className="text-xs text-slate-400">
+                        <div className="text-muted" style={{ fontSize: '0.75rem' }}>
                           {item.invoiceDate} · {formatQuantity(item.quantity, item.quantityUnit)} × {item.unitPrice.toFixed(2)} €{item.quantityUnit === 'kg' ? '/kg' : ''}
                         </div>
                       </div>
-                      <span className="font-semibold text-slate-700 shrink-0">{item.totalPrice.toFixed(2)} €</span>
+                      <span className="fw-semibold flex-shrink-0">{item.totalPrice.toFixed(2)} €</span>
                     </Link>
                   ))}
                 </div>
               )}
-            </div>
+            </Card>
           );
         })}
         {groups.length === 0 && !error && (
-          <p className="text-center text-slate-400 text-sm py-8">Ainda não tens artigos guardados.</p>
+          <p className="text-center text-muted small py-4">Ainda não tens artigos guardados.</p>
         )}
       </div>
 
-      {editingGroup && (
-        <Modal title="Editar artigo" onClose={() => !saving && setEditingGroup(null)}>
-          <div>
-            <label className="text-xs font-bold text-slate-400 uppercase">Nome</label>
-            <input
-              autoFocus
-              className="w-full mt-1 border-b py-2 outline-none focus:border-emerald-500"
-              value={nameInput}
-              onChange={e => setNameInput(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="text-xs font-bold text-slate-400 uppercase">Categoria</label>
-            <input
-              list="items-category-options"
-              className="w-full mt-1 border-b py-2 outline-none focus:border-emerald-500"
-              value={categoryInput}
-              onChange={e => setCategoryInput(e.target.value)}
-            />
+      <Modal show={!!editingGroup} onHide={() => !saving && setEditingGroup(null)}>
+        <Modal.Header closeButton>
+          <Modal.Title className="h6 mb-0">Editar artigo</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="d-flex flex-column gap-3">
+          <Form.Group>
+            <Form.Label className="text-muted small text-uppercase fw-bold">Nome</Form.Label>
+            <Form.Control autoFocus value={nameInput} onChange={e => setNameInput(e.target.value)} />
+          </Form.Group>
+          <Form.Group>
+            <Form.Label className="text-muted small text-uppercase fw-bold">Categoria</Form.Label>
+            <Form.Control list="items-category-options" value={categoryInput} onChange={e => setCategoryInput(e.target.value)} />
             <datalist id="items-category-options">
               {categoryOptions.map(c => <option key={c} value={c} />)}
             </datalist>
-          </div>
-          {saveError && <p className="text-red-500 text-sm">{saveError}</p>}
-          <div className="flex justify-end gap-3">
-            <button onClick={() => setEditingGroup(null)} disabled={saving} className="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 disabled:opacity-50">
-              Cancelar
-            </button>
-            <button
-              onClick={saveEdit}
-              disabled={saving}
-              className="inline-flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-emerald-700 disabled:opacity-50"
-            >
-              {saving && <Loader2 className="animate-spin" size={16} />}
-              {saving ? 'A guardar...' : 'Guardar'}
-            </button>
-          </div>
-        </Modal>
+          </Form.Group>
+          {saveError && <Alert variant="danger" className="py-2 small mb-0">{saveError}</Alert>}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline-secondary" disabled={saving} onClick={() => setEditingGroup(null)}>Cancelar</Button>
+          <Button variant="primary" disabled={saving} onClick={saveEdit} className="d-inline-flex align-items-center gap-2">
+            {saving && <Loader2 className="spin" size={16} />}
+            {saving ? 'A guardar...' : 'Guardar'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {historyGroup && (
+        <PriceHistoryModal
+          productName={historyGroup.key}
+          occurrences={historyGroup.occurrences}
+          onClose={() => setHistoryGroup(null)}
+        />
       )}
     </div>
   );

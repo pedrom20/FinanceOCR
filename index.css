@@ -1,3 +1,43 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'bootstrap/dist/css/bootstrap.min.css';
+
+:root {
+  --bs-primary: #059669;
+  --bs-primary-rgb: 5, 150, 105;
+  --bs-link-color: #059669;
+  --bs-link-hover-color: #047857;
+}
+
+body {
+  background-color: #f8fafc;
+}
+
+.btn-primary {
+  --bs-btn-bg: #059669;
+  --bs-btn-border-color: #059669;
+  --bs-btn-hover-bg: #047857;
+  --bs-btn-hover-border-color: #047857;
+  --bs-btn-active-bg: #047857;
+  --bs-btn-active-border-color: #047857;
+}
+
+.text-primary {
+  color: #059669 !important;
+}
+
+.nav-link.active {
+  font-weight: 600;
+  color: #34d399 !important;
+}
+
+.app-main {
+  padding-top: 4.5rem;
+}
+
+.spin {
+  animation: finocr-spin 1s linear infinite;
+}
+
+@keyframes finocr-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

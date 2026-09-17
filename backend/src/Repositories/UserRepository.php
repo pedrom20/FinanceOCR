@@ -52,4 +52,44 @@ class UserRepository
         $stmt = Database::get()->prepare('UPDATE users SET google_id = ? WHERE id = ?');
         $stmt->execute([$googleId, $userId]);
     }
+
+    /** Para a área de gestão de utilizadores (admin). Inclui contagem de faturas por utilizador. */
+    public static function listAll(): array
+    {
+        $stmt = Database::get()->query(
+            "SELECT u.id, u.email, u.name, u.role, u.created_at,
+                    (SELECT COUNT(*) FROM invoices i WHERE i.user_id = u.id) AS invoice_count
+             FROM users u
+             ORDER BY u.created_at"
+        );
+        return array_map(static fn (array $row) => [
+            'id' => (string) $row['id'],
+            'email' => $row['email'],
+            'name' => $row['name'],
+            'role' => $row['role'],
+            'createdAt' => $row['created_at'],
+            'invoiceCount' => (int) $row['invoice_count'],
+        ], $stmt->fetchAll());
+    }
+
+    public static function countAdmins(): int
+    {
+        $stmt = Database::get()->query("SELECT COUNT(*) FROM users WHERE role = 'admin'");
+        return (int) $stmt->fetchColumn();
+    }
+
+    public static function updateRole(int $userId, string $role): bool
+    {
+        $stmt = Database::get()->prepare('UPDATE users SET role = ? WHERE id = ?');
+        $stmt->execute([$role, $userId]);
+        return $stmt->rowCount() > 0;
+    }
+
+    /** As faturas/artigos/definições do utilizador vão com ele (ON DELETE CASCADE / são globais). */
+    public static function delete(int $userId): bool
+    {
+        $stmt = Database::get()->prepare('DELETE FROM users WHERE id = ?');
+        $stmt->execute([$userId]);
+        return $stmt->rowCount() > 0;
+    }
 }
