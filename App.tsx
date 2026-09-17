@@ -30,7 +30,7 @@ const AppShell = () => {
   return (
     <HashRouter>
       <AppNav user={user} onLogout={logout} />
-      <main className="app-main container-fluid py-4">
+      <main className="app-main container-fluid px-3 px-md-4 py-4">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/invoices" element={<InvoiceList />} />

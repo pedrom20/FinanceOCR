@@ -29,8 +29,39 @@ body {
   color: #34d399 !important;
 }
 
+.app-sidebar {
+  width: 240px;
+  z-index: 1030;
+}
+
+.app-sidebar .nav-link {
+  color: rgba(255, 255, 255, 0.65);
+  border-radius: 0.65rem;
+  padding: 0.65rem 1rem;
+  font-size: 0.9rem;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.app-sidebar .nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.app-sidebar .nav-link.active {
+  background-color: #059669;
+  color: #fff !important;
+  font-weight: 600;
+}
+
 .app-main {
   padding-top: 4.5rem;
+}
+
+@media (min-width: 768px) {
+  .app-main {
+    padding-top: 2rem;
+    margin-left: 240px;
+  }
 }
 
 .spin {
