@@ -20,7 +20,20 @@ class OcrController
         $payload = AuthMiddleware::authenticate();
         $userId = (int) $payload['sub'];
 
-        if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+        if (!isset($_FILES['file'])) {
+            Response::error('Ficheiro é obrigatório', 400);
+            return;
+        }
+        // UPLOAD_ERR_INI_SIZE/FORM_SIZE: o ficheiro (tipicamente uma foto tirada
+        // diretamente da câmara, várias vezes maior que um screenshot) excedeu
+        // upload_max_filesize/post_max_size do PHP antes de chegar a esta
+        // validação — sem isto, o utilizador só via o erro genérico abaixo, sem
+        // perceber que bastava tirar a foto com menos resolução.
+        if (in_array($_FILES['file']['error'], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) {
+            Response::error('Ficheiro demasiado grande (máx. 10MB)', 400);
+            return;
+        }
+        if ($_FILES['file']['error'] !== UPLOAD_ERR_OK) {
             Response::error('Ficheiro é obrigatório', 400);
             return;
         }
