@@ -3,6 +3,13 @@ import { Card, Form, Button, Row, Col, ListGroup, InputGroup } from 'react-boots
 import { UploadCloud, Plus, Loader2, Trash2 } from 'lucide-react';
 import { apiFetch, ApiError } from '../api';
 
+function formatQuantity(quantity: number, unit?: string): string {
+  if (unit === 'kg') {
+    return `${quantity.toFixed(3).replace(/\.?0+$/, '')} kg`;
+  }
+  return `${quantity} un`;
+}
+
 export const InvoiceUpload = () => {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -116,27 +123,35 @@ export const InvoiceUpload = () => {
             <ListGroup>
               {invoice.items.map((item: any, idx: number) => (
                 <ListGroup.Item key={idx} className="d-flex align-items-center gap-2">
-                  <Form.Control
-                    size="sm"
-                    className="border-0 bg-transparent"
-                    value={item.productName}
-                    onChange={e => {
-                      const items = [...invoice.items];
-                      items[idx] = { ...items[idx], productName: e.target.value };
-                      setInvoice({ ...invoice, items });
-                    }}
-                  />
+                  <div className="flex-grow-1 min-w-0">
+                    <Form.Control
+                      size="sm"
+                      className="border-0 bg-transparent px-0"
+                      value={item.productName}
+                      onChange={e => {
+                        const items = [...invoice.items];
+                        items[idx] = { ...items[idx], productName: e.target.value };
+                        setInvoice({ ...invoice, items });
+                      }}
+                    />
+                    <div className="text-muted px-0" style={{ fontSize: '0.75rem' }}>
+                      {formatQuantity(item.quantity, item.quantityUnit)}
+                      {item.quantityUnit === 'kg' && ` × ${item.unitPrice.toFixed(2)} €/kg`}
+                    </div>
+                  </div>
+                  {/* Preço mostrado/editável é sempre o total pago (totalPrice) — para
+                      artigos ao peso, unitPrice é o preço por kg, não o valor pago. */}
                   <Form.Control
                     size="sm"
                     type="number"
                     step="0.01"
                     className="border-0 bg-transparent text-end fw-semibold flex-shrink-0"
                     style={{ width: 90 }}
-                    value={item.unitPrice}
+                    value={item.totalPrice}
                     onChange={e => {
                       const price = parseFloat(e.target.value) || 0;
                       const items = [...invoice.items];
-                      items[idx] = { ...items[idx], unitPrice: price, totalPrice: price };
+                      items[idx] = { ...items[idx], totalPrice: price };
                       setInvoice({ ...invoice, items });
                     }}
                   />
