@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Navbar, Nav, NavDropdown, Container, Badge } from 'react-bootstrap';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, UploadCloud, FileText, PieChart, Store, Package, Settings, Users, LogOut, Receipt } from 'lucide-react';
@@ -15,11 +15,15 @@ export const NAV_ITEMS = [
 
 export const AppNav = ({ user, onLogout }: { user: User; onLogout: () => void }) => {
   const initial = (user.name || user.email).charAt(0).toUpperCase();
+  // react-bootstrap's Navbar.Collapse não fecha sozinho ao navegar — tem de
+  // ser controlado e fechado explicitamente em cada clique (link ou logout).
+  const [expanded, setExpanded] = useState(false);
+  const close = () => setExpanded(false);
 
   return (
-    <Navbar bg="dark" variant="dark" expand="lg" className="app-navbar" sticky="top">
+    <Navbar bg="dark" variant="dark" expand="lg" className="app-navbar" sticky="top" expanded={expanded} onToggle={setExpanded}>
       <Container fluid className="px-3">
-        <Navbar.Brand as={NavLink} to="/" className="d-flex align-items-center gap-2">
+        <Navbar.Brand as={NavLink} to="/" className="d-flex align-items-center gap-2" onClick={close}>
           <span className="brand-mark d-inline-flex align-items-center justify-content-center">
             <Receipt size={16} />
           </span>
@@ -33,7 +37,7 @@ export const AppNav = ({ user, onLogout }: { user: User; onLogout: () => void })
             {NAV_ITEMS.map(item => {
               const Icon = item.icon;
               return (
-                <Nav.Link key={item.path} as={NavLink} to={item.path} end={item.path === '/'}>
+                <Nav.Link key={item.path} as={NavLink} to={item.path} end={item.path === '/'} onClick={close}>
                   <Icon size={16} className="me-1" /> {item.label}
                 </Nav.Link>
               );
@@ -43,10 +47,10 @@ export const AppNav = ({ user, onLogout }: { user: User; onLogout: () => void })
           <Nav className="align-items-lg-center gap-lg-2">
             {user.role === 'admin' && (
               <>
-                <Nav.Link as={NavLink} to="/settings">
+                <Nav.Link as={NavLink} to="/settings" onClick={close}>
                   <Settings size={16} className="me-1" /> <span className="d-lg-none">Definições</span>
                 </Nav.Link>
-                <Nav.Link as={NavLink} to="/users">
+                <Nav.Link as={NavLink} to="/users" onClick={close}>
                   <Users size={16} className="me-1" /> <span className="d-lg-none">Utilizadores</span>
                 </Nav.Link>
                 <span className="nav-separator d-none d-lg-block" />
@@ -71,7 +75,7 @@ export const AppNav = ({ user, onLogout }: { user: User; onLogout: () => void })
                 </Badge>
               </div>
               <NavDropdown.Divider />
-              <NavDropdown.Item onClick={onLogout} className="text-danger d-flex align-items-center gap-2">
+              <NavDropdown.Item onClick={() => { close(); onLogout(); }} className="text-danger d-flex align-items-center gap-2">
                 <LogOut size={15} /> Terminar sessão
               </NavDropdown.Item>
             </NavDropdown>
