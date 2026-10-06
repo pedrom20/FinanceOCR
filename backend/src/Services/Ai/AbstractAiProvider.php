@@ -12,21 +12,25 @@ use FinanceOcr\Services\InvoiceParser;
 abstract class AbstractAiProvider implements AiProviderInterface
 {
     protected const PROMPT = <<<'PROMPT'
-Extrai os dados desta fatura ou talão de compra português. Responde APENAS
-com um único objeto JSON (sem markdown, sem explicações, sem ```), com
-exatamente estes campos:
+Extrai os dados desta fatura ou talão de compra (pode ser de qualquer país,
+não só Portugal — ex: Espanha, França). Responde APENAS com um único objeto
+JSON (sem markdown, sem explicações, sem ```), com exatamente estes campos:
 
 {
   "storeName": string (nome do comerciante/loja),
-  "storeNif": string (9 dígitos, sem espaços; "" se não encontrares),
+  "storeNif": string (identificador fiscal do comerciante tal como aparece
+      impresso — NIF português de 9 dígitos, CIF espanhol tipo "A46103834",
+      SIRET/SIREN francês, etc.; mantém letras se existirem; "" se não
+      encontrares),
   "invoiceDate": string (formato AAAA-MM-DD; "" se não encontrares),
   "totalAmount": number (valor total pago),
   "paymentMethod": string (ex: "Multibanco", "Cartão", "Dinheiro", "MB Way"; "Dinheiro" se não conseguires determinar),
   "items": [ { "productName": string, "quantity": number, "unitPrice": number, "totalPrice": number } ]
 }
 
-Se não conseguires ler algum campo, usa "" para strings, 0 para números, ou
-[] para items. Não inventes valores que não estejam visíveis na imagem.
+Lista TODOS os artigos da fatura, mesmo que sejam muitos. Se não conseguires
+ler algum campo, usa "" para strings, 0 para números, ou [] para items. Não
+inventes valores que não estejam visíveis na imagem.
 PROMPT;
 
     protected const CATEGORY_PROMPT = <<<'PROMPT'
@@ -174,7 +178,10 @@ PROMPT;
 
         return [
             'storeName' => (string) ($data['storeName'] ?? ''),
-            'storeNif' => preg_replace('/\D/', '', (string) ($data['storeNif'] ?? '')),
+            // Mantém letras (ex: CIF espanhol "A46103834") — só remove espaços e
+            // pontuação de alinhamento, ao contrário do NIF português puramente
+            // numérico que o InvoiceParser (regex local) continua a exigir.
+            'storeNif' => preg_replace('/[^A-Za-z0-9]/', '', (string) ($data['storeNif'] ?? '')),
             'invoiceDate' => (string) ($data['invoiceDate'] ?? ''),
             'totalAmount' => (float) ($data['totalAmount'] ?? 0),
             'paymentMethod' => (string) ($data['paymentMethod'] ?? 'Dinheiro'),

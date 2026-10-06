@@ -103,11 +103,11 @@ class InvoiceParser
             if (preg_match($dateLabelRegex, $line) !== 1) {
                 continue;
             }
-            if (preg_match($isoDateRegex, $line, $isoMatch) === 1) {
+            if (preg_match($isoDateRegex, $line, $isoMatch) === 1 && self::isValidDate($isoMatch[2], $isoMatch[3], $isoMatch[1])) {
                 $result['invoiceDate'] = "{$isoMatch[1]}-{$isoMatch[2]}-{$isoMatch[3]}";
                 break;
             }
-            if (preg_match($dateRegex, $line, $dateMatch) === 1) {
+            if (preg_match($dateRegex, $line, $dateMatch) === 1 && self::isValidDate($dateMatch[2], $dateMatch[1], $dateMatch[3])) {
                 $result['invoiceDate'] = "{$dateMatch[3]}-{$dateMatch[2]}-{$dateMatch[1]}";
                 break;
             }
@@ -141,9 +141,9 @@ class InvoiceParser
             // Detect Date: só usa a primeira data solta encontrada se nenhuma
             // linha rotulada ("Data: ...") já a tiver identificado acima.
             if (!$result['invoiceDate']) {
-                if (preg_match($isoDateRegex, $line, $isoMatch) === 1) {
+                if (preg_match($isoDateRegex, $line, $isoMatch) === 1 && self::isValidDate($isoMatch[2], $isoMatch[3], $isoMatch[1])) {
                     $result['invoiceDate'] = "{$isoMatch[1]}-{$isoMatch[2]}-{$isoMatch[3]}";
-                } elseif (preg_match($dateRegex, $line, $dateMatch) === 1) {
+                } elseif (preg_match($dateRegex, $line, $dateMatch) === 1 && self::isValidDate($dateMatch[2], $dateMatch[1], $dateMatch[3])) {
                     $result['invoiceDate'] = "{$dateMatch[3]}-{$dateMatch[2]}-{$dateMatch[1]}";
                 }
             }
@@ -241,5 +241,16 @@ class InvoiceParser
             }
         }
         return implode(' ', $words);
+    }
+
+    /**
+     * A OCR troca dígitos com frequência (ex: "10/09/2026" lido como
+     * "40/09/2026") — sem validar o resultado, isso vira uma data impossível
+     * em vez de ser rejeitado e cair no fallback (próxima data encontrada, ou
+     * a data de hoje no fim de parse()).
+     */
+    private static function isValidDate(string $month, string $day, string $year): bool
+    {
+        return checkdate((int) $month, (int) $day, (int) $year);
     }
 }

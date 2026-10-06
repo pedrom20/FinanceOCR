@@ -29,10 +29,13 @@ class AnthropicProvider extends AbstractAiProvider
 
     protected function callVision(string $prompt, string $base64Image, string $mediaType): string
     {
+        // Faturas com muitos artigos (20+) geram um JSON de resposta mais longo
+        // que 1024 tokens — a resposta ficava cortada a meio, o que falha
+        // silenciosamente o json_decode() e descarta todo o fallback.
         return $this->call([
             ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $mediaType, 'data' => $base64Image]],
             ['type' => 'text', 'text' => $prompt],
-        ], 1024);
+        ], 4096);
     }
 
     protected function callText(string $prompt): string

@@ -28,10 +28,12 @@ class GoogleProvider extends AbstractAiProvider
 
     protected function callVision(string $prompt, string $base64Image, string $mediaType): string
     {
+        // Ver nota em AnthropicProvider::callVision — 1024 tokens corta a meio
+        // o JSON de faturas com muitos artigos.
         return $this->call([
             ['text' => $prompt],
             ['inline_data' => ['mime_type' => $mediaType, 'data' => $base64Image]],
-        ], 1024);
+        ], 4096);
     }
 
     protected function callText(string $prompt): string

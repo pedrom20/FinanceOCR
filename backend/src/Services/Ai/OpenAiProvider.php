@@ -28,10 +28,12 @@ class OpenAiProvider extends AbstractAiProvider
 
     protected function callVision(string $prompt, string $base64Image, string $mediaType): string
     {
+        // Ver nota em AnthropicProvider::callVision — 1024 tokens corta a meio
+        // o JSON de faturas com muitos artigos.
         return $this->call([
             ['type' => 'text', 'text' => $prompt],
             ['type' => 'image_url', 'image_url' => ['url' => "data:{$mediaType};base64,{$base64Image}"]],
-        ], 1024);
+        ], 4096);
     }
 
     protected function callText(string $prompt): string
