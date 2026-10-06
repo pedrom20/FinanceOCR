@@ -22,6 +22,7 @@ export interface Invoice {
   storeName: string;
   storeLocation?: string;
   storeNif: string;
+  country?: string;
   invoiceNumber: string;
   invoiceDate: string;
   totalAmount: number;

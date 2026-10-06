@@ -20,6 +20,9 @@ JSON (sem markdown, sem explicações, sem ```), com exatamente estes campos:
   "storeName": string (nome comercial/marca do comerciante, ex: "Mercadona" — não a cidade nem a razão social completa),
   "storeLocation": string (cidade/localidade da loja, a partir da morada no
       cabeçalho, ex: "Coria", "Odemira"; "" se não encontrares),
+  "country": string (código de país ISO 3166-1 alpha-2 de 2 letras
+      maiúsculas de onde foi feita a compra, deduzido da morada, idioma,
+      moeda ou formato do identificador fiscal — ex: "PT", "ES", "FR"),
   "storeNif": string (identificador fiscal do comerciante tal como aparece
       impresso — NIF português de 9 dígitos, CIF espanhol tipo "A46103834",
       SIRET/SIREN francês, etc.; mantém letras se existirem; "" se não
@@ -187,6 +190,7 @@ PROMPT;
         return [
             'storeName' => (string) ($data['storeName'] ?? ''),
             'storeLocation' => (string) ($data['storeLocation'] ?? ''),
+            'country' => self::normalizeCountryCode((string) ($data['country'] ?? '')),
             // Mantém letras (ex: CIF espanhol "A46103834") — só remove espaços e
             // pontuação de alinhamento, ao contrário do NIF português puramente
             // numérico que o InvoiceParser (regex local) continua a exigir.
@@ -196,6 +200,13 @@ PROMPT;
             'paymentMethod' => (string) ($data['paymentMethod'] ?? 'Dinheiro'),
             'items' => $items,
         ];
+    }
+
+    /** '' a menos que seja exatamente um código de 2 letras — não confia cegamente no que o modelo devolveu. */
+    private static function normalizeCountryCode(string $code): string
+    {
+        $code = strtoupper(trim($code));
+        return preg_match('/^[A-Z]{2}$/', $code) === 1 ? $code : '';
     }
 
     /** POST JSON genérico via cURL — os fornecedores só constroem o payload/headers. */

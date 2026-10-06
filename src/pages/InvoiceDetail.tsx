@@ -4,6 +4,7 @@ import { Card, Table, Button, Badge, Form, Modal, Alert } from 'react-bootstrap'
 import { ArrowLeft, Download, Pencil, RefreshCw, Trash2, Check, X } from 'lucide-react';
 import { apiFetch, apiJson, ApiError } from '../api';
 import { Invoice, InvoiceItem } from '../types';
+import { countryLabel } from '../countries';
 
 function formatQuantity(quantity: number, unit?: string): string {
   if (unit === 'kg') {
@@ -211,7 +212,12 @@ export const InvoiceDetail = () => {
       <Card>
         <Card.Header className="bg-light d-flex flex-wrap justify-content-between align-items-start gap-3">
           <div>
-            <h1 className="h5 fw-bold mb-0">{invoice.storeName}</h1>
+            <h1 className="h5 fw-bold mb-0 d-flex align-items-center gap-2">
+              {invoice.storeName}
+              {invoice.country && invoice.country !== 'PT' && (
+                <Badge bg="secondary" className="fw-normal">{countryLabel(invoice.country)}</Badge>
+              )}
+            </h1>
             {invoice.storeLocation && invoice.storeLocation !== invoice.storeName && (
               <p className="text-muted small mb-0">{invoice.storeLocation}</p>
             )}

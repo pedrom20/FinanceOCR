@@ -16,6 +16,11 @@ class InvoiceParser
             'storeName' => 'Loja Identificada',
             'storeLocation' => '',
             'storeNif' => '',
+            // Este parser por regex só conhece rótulos portugueses ("NIF",
+            // "DATA", etc.) — se consegue ler a fatura com estas heurísticas,
+            // é razoável assumir Portugal. O fallback de IA (que lê a imagem
+            // diretamente) corrige isto quando for outro país.
+            'country' => 'PT',
             'invoiceNumber' => '',
             'invoiceDate' => '',
             'totalAmount' => 0.0,

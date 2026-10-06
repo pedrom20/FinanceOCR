@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, Form, Button, Row, Col, ListGroup, InputGroup } from 'react-bootstrap';
 import { UploadCloud, Plus, Loader2, Trash2 } from 'lucide-react';
 import { apiFetch, ApiError } from '../api';
+import { COUNTRY_NAMES } from '../countries';
 
 function formatQuantity(quantity: number, unit?: string): string {
   if (unit === 'kg') {
@@ -92,9 +93,20 @@ export const InvoiceUpload = () => {
               <Form.Label className="text-muted small text-uppercase fw-bold">Localização</Form.Label>
               <Form.Control value={invoice.storeLocation || ''} onChange={e => setInvoice({ ...invoice, storeLocation: e.target.value })} />
             </Form.Group>
-            <Form.Group>
+            <Form.Group className="mb-3">
               <Form.Label className="text-muted small text-uppercase fw-bold">NIF</Form.Label>
               <Form.Control value={invoice.storeNif} onChange={e => setInvoice({ ...invoice, storeNif: e.target.value })} />
+            </Form.Group>
+            <Form.Group>
+              <Form.Label className="text-muted small text-uppercase fw-bold">País</Form.Label>
+              <Form.Select value={invoice.country || 'PT'} onChange={e => setInvoice({ ...invoice, country: e.target.value })}>
+                {!(invoice.country in COUNTRY_NAMES) && invoice.country && (
+                  <option value={invoice.country}>{invoice.country}</option>
+                )}
+                {Object.entries(COUNTRY_NAMES).map(([code, name]) => (
+                  <option key={code} value={code}>{name}</option>
+                ))}
+              </Form.Select>
             </Form.Group>
           </Col>
           <Col md={6}>

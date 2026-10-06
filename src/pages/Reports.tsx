@@ -4,6 +4,7 @@ import { Card, Form, Row, Col, Button, Spinner, Alert, Badge } from 'react-boots
 import { PieChart, Download, Loader2, Filter, ChevronDown, ChevronRight, Sparkles, TrendingUp } from 'lucide-react';
 import { apiFetch, apiJson, ApiError } from '../api';
 import { PriceHistoryModal } from '../components/PriceHistoryModal';
+import { countryLabel } from '../countries';
 
 interface ReportItem {
   invoiceId: string;
@@ -23,6 +24,7 @@ interface FiltersResponse {
   stores: string[];
   categories: string[];
   locations: string[];
+  countries: string[];
 }
 
 interface GroupedItem {
@@ -57,9 +59,10 @@ function formatQuantity(quantity: number, unit?: string): string {
 
 export const Reports = () => {
   const [downloading, setDownloading] = useState(false);
-  const [filterOptions, setFilterOptions] = useState<FiltersResponse>({ stores: [], categories: [], locations: [] });
+  const [filterOptions, setFilterOptions] = useState<FiltersResponse>({ stores: [], categories: [], locations: [], countries: [] });
   const [store, setStore] = useState('');
   const [location, setLocation] = useState('');
+  const [country, setCountry] = useState('');
   const [category, setCategory] = useState('');
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -94,6 +97,7 @@ export const Reports = () => {
       const params = new URLSearchParams();
       if (store) params.set('store', store);
       if (location) params.set('location', location);
+      if (country) params.set('country', country);
       if (category) params.set('category', category);
       if (search) params.set('search', search);
       if (dateFrom) params.set('dateFrom', dateFrom);
@@ -110,7 +114,7 @@ export const Reports = () => {
         .finally(() => setLoading(false));
     }, 300);
     return () => clearTimeout(handle);
-  }, [store, location, category, search, dateFrom, dateTo, reloadKey]);
+  }, [store, location, country, category, search, dateFrom, dateTo, reloadKey]);
 
   const categorizeMissing = async () => {
     setCategorizing(true);
@@ -209,6 +213,17 @@ export const Reports = () => {
                 </Form.Select>
               </Form.Group>
             </Col>
+            {filterOptions.countries.length > 1 && (
+              <Col xs={6} md={2}>
+                <Form.Group>
+                  <Form.Label className="text-muted small text-uppercase fw-bold mb-1">País</Form.Label>
+                  <Form.Select size="sm" value={country} onChange={e => setCountry(e.target.value)}>
+                    <option value="">Todos</option>
+                    {filterOptions.countries.map(c => <option key={c} value={c}>{countryLabel(c)}</option>)}
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+            )}
             <Col xs={6} md={2}>
               <Form.Group>
                 <Form.Label className="text-muted small text-uppercase fw-bold mb-1">Categoria</Form.Label>

@@ -12,14 +12,15 @@ class InvoiceRepository
         $db->beginTransaction();
         try {
             $stmt = $db->prepare(
-                'INSERT INTO invoices (user_id, store_name, store_location, store_nif, invoice_number, invoice_date, total_amount, payment_method, file_name)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                'INSERT INTO invoices (user_id, store_name, store_location, store_nif, country, invoice_number, invoice_date, total_amount, payment_method, file_name)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
             $stmt->execute([
                 $userId,
                 $invoiceData['storeName'],
                 $invoiceData['storeLocation'] ?? '',
                 $invoiceData['storeNif'] ?? '',
+                $invoiceData['country'] ?? 'PT',
                 $invoiceData['invoiceNumber'] ?? '',
                 $invoiceData['invoiceDate'] ?? null ?: null,
                 $invoiceData['totalAmount'],
@@ -54,13 +55,14 @@ class InvoiceRepository
         $db->beginTransaction();
         try {
             $stmt = $db->prepare(
-                'UPDATE invoices SET store_name = ?, store_location = ?, store_nif = ?, invoice_date = ?, total_amount = ?, payment_method = ?
+                'UPDATE invoices SET store_name = ?, store_location = ?, store_nif = ?, country = ?, invoice_date = ?, total_amount = ?, payment_method = ?
                  WHERE id = ? AND user_id = ?'
             );
             $stmt->execute([
                 $extracted['storeName'],
                 $extracted['storeLocation'] ?? '',
                 $extracted['storeNif'] ?? '',
+                $extracted['country'] ?? 'PT',
                 $extracted['invoiceDate'] ?: null,
                 $extracted['totalAmount'],
                 $extracted['paymentMethod'] ?? 'Dinheiro',
@@ -105,7 +107,7 @@ class InvoiceRepository
     public static function listByUser(int $userId): array
     {
         $stmt = Database::get()->prepare(
-            'SELECT id, store_name, store_location, store_nif, invoice_number, invoice_date, total_amount, payment_method, file_name, created_at
+            'SELECT id, store_name, store_location, store_nif, country, invoice_number, invoice_date, total_amount, payment_method, file_name, created_at
              FROM invoices WHERE user_id = ? ORDER BY created_at DESC'
         );
         $stmt->execute([$userId]);
@@ -135,7 +137,7 @@ class InvoiceRepository
     public static function findByIdForUser(int $userId, int $invoiceId): ?array
     {
         $stmt = Database::get()->prepare(
-            'SELECT id, store_name, store_location, store_nif, invoice_number, invoice_date, total_amount, payment_method, file_name, created_at
+            'SELECT id, store_name, store_location, store_nif, country, invoice_number, invoice_date, total_amount, payment_method, file_name, created_at
              FROM invoices WHERE id = ? AND user_id = ?'
         );
         $stmt->execute([$invoiceId, $userId]);
@@ -330,16 +332,26 @@ class InvoiceRepository
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
+    /** Países distintos deste utilizador, para o dropdown de filtro do relatório. */
+    public static function listDistinctCountries(int $userId): array
+    {
+        $stmt = Database::get()->prepare(
+            "SELECT DISTINCT country FROM invoices WHERE user_id = ? AND country != '' ORDER BY country"
+        );
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+    }
+
     /**
      * Artigos deste utilizador que cumprem os filtros do relatório, com a
      * informação da fatura a que pertencem. Todos os filtros são opcionais.
      *
-     * @param array{store?:string,location?:string,category?:string,search?:string,dateFrom?:string,dateTo?:string} $filters
+     * @param array{store?:string,location?:string,country?:string,category?:string,search?:string,dateFrom?:string,dateTo?:string} $filters
      */
     public static function searchItems(int $userId, array $filters): array
     {
         $sql = 'SELECT ii.product_name, ii.quantity, ii.quantity_unit, ii.unit_price, ii.total_price, ii.vat_rate, ii.category,
-                       i.id AS invoice_id, i.invoice_date, i.store_name, i.store_location
+                       i.id AS invoice_id, i.invoice_date, i.store_name, i.store_location, i.country
                 FROM invoice_items ii
                 JOIN invoices i ON i.id = ii.invoice_id
                 WHERE i.user_id = ?';
@@ -352,6 +364,10 @@ class InvoiceRepository
         if (!empty($filters['location'])) {
             $sql .= ' AND i.store_location = ?';
             $params[] = $filters['location'];
+        }
+        if (!empty($filters['country'])) {
+            $sql .= ' AND i.country = ?';
+            $params[] = $filters['country'];
         }
         if (!empty($filters['category'])) {
             $sql .= ' AND ii.category = ?';
@@ -379,6 +395,7 @@ class InvoiceRepository
             'invoiceDate' => $row['invoice_date'],
             'storeName' => $row['store_name'],
             'storeLocation' => $row['store_location'],
+            'country' => $row['country'],
             'productName' => $row['product_name'],
             'quantity' => (float) $row['quantity'],
             'quantityUnit' => $row['quantity_unit'],
@@ -467,6 +484,7 @@ class InvoiceRepository
             'storeName' => $row['store_name'],
             'storeLocation' => $row['store_location'],
             'storeNif' => $row['store_nif'],
+            'country' => $row['country'],
             'invoiceNumber' => $row['invoice_number'],
             'invoiceDate' => $row['invoice_date'],
             'totalAmount' => (float) $row['total_amount'],

@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS invoices (
   store_name      VARCHAR(255) NOT NULL,
   store_location  VARCHAR(255) NOT NULL DEFAULT '',
   store_nif       VARCHAR(20)  NOT NULL DEFAULT '',
+  country         VARCHAR(2)   NOT NULL DEFAULT 'PT',
   invoice_number  VARCHAR(100) NOT NULL DEFAULT '',
   invoice_date    DATE NULL,
   total_amount    DECIMAL(10,2) NOT NULL DEFAULT 0,

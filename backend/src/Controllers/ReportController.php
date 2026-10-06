@@ -19,6 +19,7 @@ class ReportController
         Response::json([
             'stores' => InvoiceRepository::listDistinctStores($userId),
             'locations' => InvoiceRepository::listDistinctLocations($userId),
+            'countries' => InvoiceRepository::listDistinctCountries($userId),
             'categories' => InvoiceRepository::listCategoriesForUser($userId),
         ]);
     }
@@ -31,6 +32,7 @@ class ReportController
         $filters = [
             'store' => $_GET['store'] ?? '',
             'location' => $_GET['location'] ?? '',
+            'country' => $_GET['country'] ?? '',
             'category' => $_GET['category'] ?? '',
             'search' => $_GET['search'] ?? '',
             'dateFrom' => $_GET['dateFrom'] ?? '',
