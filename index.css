@@ -24,6 +24,11 @@ body {
   font-family: 'Plus Jakarta Sans', sans-serif;
   background-color: #f1f4f8;
   color: #1e293b;
+  /* Última linha de defesa: mesmo corrigindo as causas concretas (tabelas
+     largas, texto sem espaços a empurrar um flex item sem min-width:0), um
+     futuro elemento largo de mais não deve conseguir abrir scroll horizontal
+     na página toda — só dentro do seu próprio contentor. */
+  overflow-x: hidden;
 }
 
 /* ── Top navbar (desktop + mobile) ────────────────────────── */
@@ -241,6 +246,14 @@ body {
   vertical-align: middle;
   padding: 0.7rem 1rem;
   border-color: #eef0f4;
+}
+
+/* .table-sm (ex: resumo de IVA) é usada precisamente para caber em ecrãs
+   estreitos — sem isto o padding acima sobrepõe-se ao padding compacto do
+   Bootstrap e a tabela volta a precisar de scroll horizontal. */
+.table-sm thead th,
+.table-sm td {
+  padding: 0.4rem 0.5rem;
 }
 
 .table-hover tbody tr:hover {

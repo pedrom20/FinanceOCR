@@ -211,20 +211,24 @@ export const InvoiceDetail = () => {
 
       <Card>
         <Card.Header className="bg-light d-flex flex-wrap justify-content-between align-items-start gap-3">
-          <div>
-            <h1 className="h5 fw-bold mb-0 d-flex align-items-center gap-2">
-              {invoice.storeName}
+          {/* min-width:0 é necessário para o nome da loja poder encolher/
+              quebrar dentro deste flex item — sem isto um nome sem espaços
+              (comum em texto de OCR) empurra a página inteira para scroll
+              horizontal, mesmo com text-break aplicado ao texto. */}
+          <div style={{ minWidth: 0 }}>
+            <h1 className="h5 fw-bold mb-0 text-break">
+              {invoice.storeName}{' '}
               {invoice.country && invoice.country !== 'PT' && (
-                <Badge bg="secondary" className="fw-normal">{countryLabel(invoice.country)}</Badge>
+                <Badge bg="secondary" className="fw-normal align-middle">{countryLabel(invoice.country)}</Badge>
               )}
             </h1>
             {invoice.storeLocation && invoice.storeLocation !== invoice.storeName && (
-              <p className="text-muted small mb-0">{invoice.storeLocation}</p>
+              <p className="text-muted small mb-0 text-break">{invoice.storeLocation}</p>
             )}
             {invoice.storeNif && <p className="text-muted small mb-0">NIF: {invoice.storeNif}</p>}
             <Link to="/stores" className="small">Editar loja</Link>
           </div>
-          <div className="text-end">
+          <div className="text-end flex-shrink-0">
             <p className="fs-3 fw-black text-success mb-0">{invoice.totalAmount.toFixed(2)} €</p>
             <p className="text-muted small mb-0">{invoice.invoiceDate}</p>
           </div>
@@ -241,32 +245,29 @@ export const InvoiceDetail = () => {
         {invoice.items && invoice.items.length > 0 && (
           <Card.Body>
             <h2 className="text-muted text-uppercase small fw-bold mb-3">Artigos</h2>
-            <Table responsive className="align-middle mb-0">
-              <thead>
-                <tr className="text-muted text-uppercase small">
-                  <th>Artigo</th>
-                  <th>Categoria</th>
-                  <th className="text-end">Quantidade</th>
-                  <th className="text-end">Preço Unit.</th>
-                  <th className="text-end">IVA</th>
-                  <th className="text-end">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoice.items.map((item, idx) => (
-                  <tr key={item.id ?? idx}>
-                    <td className="fw-semibold">{item.productName}</td>
-                    <td>{renderCategory(item)}</td>
-                    <td className="text-end text-muted">{formatQuantity(item.quantity, item.quantityUnit)}</td>
-                    <td className="text-end text-muted">
-                      {item.unitPrice.toFixed(2)} €{item.quantityUnit === 'kg' ? '/kg' : ''}
-                    </td>
-                    <td className="text-end text-muted">{item.vatRate != null ? `${item.vatRate}%` : '—'}</td>
-                    <td className="text-end fw-bold">{item.totalPrice.toFixed(2)} €</td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
+            {/* Lista em vez de tabela: uma tabela com 6 colunas (artigo,
+                categoria, quantidade, preço unit., IVA, total) não cabe em
+                375px sem scroll horizontal, mesmo com nomes de artigo curtos. */}
+            <div className="d-flex flex-column">
+              {invoice.items.map((item, idx) => (
+                <div key={item.id ?? idx} className={`py-2 ${idx < invoice.items!.length - 1 ? 'border-bottom' : ''}`}>
+                  <div className="d-flex align-items-start justify-content-between gap-2">
+                    <div style={{ minWidth: 0 }}>
+                      <div className="fw-semibold text-break">{item.productName}</div>
+                      <div className="text-muted small d-flex flex-wrap align-items-center gap-2 mt-1">
+                        <span>{formatQuantity(item.quantity, item.quantityUnit)}</span>
+                        <span>
+                          {item.unitPrice.toFixed(2)} €{item.quantityUnit === 'kg' ? '/kg' : ''}
+                        </span>
+                        {item.vatRate != null && <span>IVA {item.vatRate}%</span>}
+                        {renderCategory(item)}
+                      </div>
+                    </div>
+                    <div className="fw-bold flex-shrink-0">{item.totalPrice.toFixed(2)} €</div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </Card.Body>
         )}
 
@@ -296,9 +297,9 @@ export const InvoiceDetail = () => {
           </Card.Body>
         )}
 
-        <Card.Footer className="bg-light d-flex justify-content-between align-items-center">
-          <span className="fw-bold">{invoice.paymentMethod}</span>
-          <span className="fs-5 fw-bold text-success">{invoice.totalAmount.toFixed(2)} €</span>
+        <Card.Footer className="bg-light d-flex justify-content-between align-items-center gap-2">
+          <span className="fw-bold text-break" style={{ minWidth: 0 }}>{invoice.paymentMethod}</span>
+          <span className="fs-5 fw-bold text-success flex-shrink-0">{invoice.totalAmount.toFixed(2)} €</span>
         </Card.Footer>
       </Card>
 
