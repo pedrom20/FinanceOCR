@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, Form, Button, Row, Col, ListGroup, InputGroup } from 'react-bootstrap';
 import { UploadCloud, Plus, Loader2, Trash2 } from 'lucide-react';
 import { apiFetch, ApiError } from '../api';
-import { COUNTRY_NAMES } from '../countries';
+import { COUNTRY_NAMES, countryFlag } from '../countries';
 
 function formatQuantity(quantity: number, unit?: string): string {
   if (unit === 'kg') {
@@ -104,7 +104,7 @@ export const InvoiceUpload = () => {
                   <option value={invoice.country}>{invoice.country}</option>
                 )}
                 {Object.entries(COUNTRY_NAMES).map(([code, name]) => (
-                  <option key={code} value={code}>{name}</option>
+                  <option key={code} value={code}>{countryFlag(code)} {name}</option>
                 ))}
               </Form.Select>
             </Form.Group>

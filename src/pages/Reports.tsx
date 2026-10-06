@@ -4,7 +4,7 @@ import { Card, Form, Row, Col, Button, Spinner, Alert, Badge } from 'react-boots
 import { PieChart, Download, Loader2, Filter, ChevronDown, ChevronRight, Sparkles, TrendingUp } from 'lucide-react';
 import { apiFetch, apiJson, ApiError } from '../api';
 import { PriceHistoryModal } from '../components/PriceHistoryModal';
-import { countryLabel } from '../countries';
+import { countryLabelWithFlag } from '../countries';
 
 interface ReportItem {
   invoiceId: string;
@@ -219,7 +219,7 @@ export const Reports = () => {
                   <Form.Label className="text-muted small text-uppercase fw-bold mb-1">País</Form.Label>
                   <Form.Select size="sm" value={country} onChange={e => setCountry(e.target.value)}>
                     <option value="">Todos</option>
-                    {filterOptions.countries.map(c => <option key={c} value={c}>{countryLabel(c)}</option>)}
+                    {filterOptions.countries.map(c => <option key={c} value={c}>{countryLabelWithFlag(c)}</option>)}
                   </Form.Select>
                 </Form.Group>
               </Col>

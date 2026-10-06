@@ -20,3 +20,18 @@ export function countryLabel(code?: string): string {
   if (!code) return '';
   return COUNTRY_NAMES[code] ?? code;
 }
+
+/** Emoji de bandeira a partir do código ISO (ex: "ES" -> 🇪🇸) — construído a
+ * partir dos "regional indicator symbols" do Unicode, por isso funciona para
+ * qualquer código de 2 letras, não só os que estão em COUNTRY_NAMES. */
+export function countryFlag(code?: string): string {
+  if (!code || !/^[A-Za-z]{2}$/.test(code)) return '';
+  const [a, b] = code.toUpperCase();
+  return String.fromCodePoint(0x1f1e6 + a.charCodeAt(0) - 65, 0x1f1e6 + b.charCodeAt(0) - 65);
+}
+
+export function countryLabelWithFlag(code?: string): string {
+  if (!code) return '';
+  const flag = countryFlag(code);
+  return flag ? `${flag} ${countryLabel(code)}` : countryLabel(code);
+}
