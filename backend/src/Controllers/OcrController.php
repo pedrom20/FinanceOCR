@@ -125,6 +125,9 @@ class OcrController
                         if ($aiResult['storeName'] !== '') {
                             $extracted['storeName'] = $aiResult['storeName'];
                         }
+                        if (($aiResult['storeLocation'] ?? '') !== '') {
+                            $extracted['storeLocation'] = $aiResult['storeLocation'];
+                        }
                         if ($aiResult['storeNif'] !== '') {
                             $extracted['storeNif'] = $aiResult['storeNif'];
                         }

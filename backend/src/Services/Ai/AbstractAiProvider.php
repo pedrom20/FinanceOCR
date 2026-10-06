@@ -17,15 +17,23 @@ não só Portugal — ex: Espanha, França). Responde APENAS com um único objet
 JSON (sem markdown, sem explicações, sem ```), com exatamente estes campos:
 
 {
-  "storeName": string (nome do comerciante/loja),
+  "storeName": string (nome comercial/marca do comerciante, ex: "Mercadona" — não a cidade nem a razão social completa),
+  "storeLocation": string (cidade/localidade da loja, a partir da morada no
+      cabeçalho, ex: "Coria", "Odemira"; "" se não encontrares),
   "storeNif": string (identificador fiscal do comerciante tal como aparece
       impresso — NIF português de 9 dígitos, CIF espanhol tipo "A46103834",
       SIRET/SIREN francês, etc.; mantém letras se existirem; "" se não
       encontrares),
   "invoiceDate": string (formato AAAA-MM-DD; "" se não encontrares),
   "totalAmount": number (valor total pago),
-  "paymentMethod": string (ex: "Multibanco", "Cartão", "Dinheiro", "MB Way"; "Dinheiro" se não conseguires determinar),
-  "items": [ { "productName": string, "quantity": number, "unitPrice": number, "totalPrice": number } ]
+  "paymentMethod": string (traduz/normaliza SEMPRE para português, seja qual
+      for o idioma do talão — usa um destes: "Multibanco", "Cartão",
+      "Dinheiro", "MB Way"; ex: "Tarjeta"/"Carte"/"Card" -> "Cartão";
+      "Dinheiro" se não conseguires determinar),
+  "items": [ { "productName": string, "quantity": number,
+      "quantityUnit": "kg" ou "un" (usa "kg" quando o artigo é vendido ao
+      peso — normalmente fruta, legumes, carne ou peixe com preço por kg;
+      caso contrário "un"), "unitPrice": number, "totalPrice": number } ]
 }
 
 Lista TODOS os artigos da fatura, mesmo que sejam muitos. Se não conseguires
@@ -168,7 +176,7 @@ PROMPT;
             $items[] = [
                 'productName' => InvoiceParser::toDisplayCase((string) $item['productName']),
                 'quantity' => (float) ($item['quantity'] ?? 1),
-                'quantityUnit' => 'un',
+                'quantityUnit' => (($item['quantityUnit'] ?? 'un') === 'kg') ? 'kg' : 'un',
                 'unitPrice' => (float) ($item['unitPrice'] ?? 0),
                 'totalPrice' => (float) ($item['totalPrice'] ?? 0),
                 'vatRate' => null,
@@ -178,6 +186,7 @@ PROMPT;
 
         return [
             'storeName' => (string) ($data['storeName'] ?? ''),
+            'storeLocation' => (string) ($data['storeLocation'] ?? ''),
             // Mantém letras (ex: CIF espanhol "A46103834") — só remove espaços e
             // pontuação de alinhamento, ao contrário do NIF português puramente
             // numérico que o InvoiceParser (regex local) continua a exigir.
