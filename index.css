@@ -169,6 +169,14 @@ body {
   transition: box-shadow 0.18s ease;
 }
 
+.card[role="button"] {
+  cursor: pointer;
+}
+
+.card[role="button"]:hover {
+  box-shadow: var(--fo-shadow-lg);
+}
+
 .card-header {
   border-bottom: 1px solid var(--fo-border);
   border-radius: var(--fo-radius-lg) var(--fo-radius-lg) 0 0 !important;
