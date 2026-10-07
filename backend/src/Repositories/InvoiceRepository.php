@@ -350,7 +350,7 @@ class InvoiceRepository
      */
     public static function searchItems(int $userId, array $filters): array
     {
-        $sql = 'SELECT ii.product_name, ii.quantity, ii.quantity_unit, ii.unit_price, ii.total_price, ii.vat_rate, ii.category,
+        $sql = 'SELECT ii.product_name, ii.quantity, ii.quantity_unit, ii.unit_price, ii.total_price, ii.vat_rate, ii.category, ii.image_path,
                        i.id AS invoice_id, i.invoice_date, i.store_name, i.store_location, i.country
                 FROM invoice_items ii
                 JOIN invoices i ON i.id = ii.invoice_id
@@ -403,6 +403,7 @@ class InvoiceRepository
             'totalPrice' => (float) $row['total_price'],
             'vatRate' => $row['vat_rate'] !== null ? (float) $row['vat_rate'] : null,
             'category' => $row['category'],
+            'imagePath' => $row['image_path'],
         ], $stmt->fetchAll());
     }
 
@@ -433,6 +434,19 @@ class InvoiceRepository
              WHERE i.user_id = ? AND ii.product_name = ?'
         );
         $stmt->execute([$category, $userId, $productName]);
+        return $stmt->rowCount();
+    }
+
+    /** Define a imagem de referência de TODAS as ocorrências deste artigo — mesma lógica de recategorizeProductGroup(), mas para a foto. */
+    public static function setProductImage(int $userId, string $productName, ?string $imagePath): int
+    {
+        $stmt = Database::get()->prepare(
+            'UPDATE invoice_items ii
+             JOIN invoices i ON i.id = ii.invoice_id
+             SET ii.image_path = ?
+             WHERE i.user_id = ? AND ii.product_name = ?'
+        );
+        $stmt->execute([$imagePath, $userId, $productName]);
         return $stmt->rowCount();
     }
 
@@ -480,7 +494,7 @@ class InvoiceRepository
     private static function itemsForInvoice(int $invoiceId): array
     {
         $stmt = Database::get()->prepare(
-            'SELECT id, product_name, quantity, quantity_unit, unit_price, total_price, vat_rate, category
+            'SELECT id, product_name, quantity, quantity_unit, unit_price, total_price, vat_rate, category, image_path
              FROM invoice_items WHERE invoice_id = ? ORDER BY id'
         );
         $stmt->execute([$invoiceId]);
@@ -493,6 +507,7 @@ class InvoiceRepository
             'totalPrice' => (float) $row['total_price'],
             'vatRate' => $row['vat_rate'] !== null ? (float) $row['vat_rate'] : null,
             'category' => $row['category'],
+            'imagePath' => $row['image_path'],
         ], $stmt->fetchAll());
     }
 

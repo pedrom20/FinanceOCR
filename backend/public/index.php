@@ -39,6 +39,9 @@ $router->put('/api/items/category', fn () => ItemController::recategorize());
 $router->get('/api/items/aliases', fn () => ItemController::listAliases());
 $router->put('/api/items/alias', fn () => ItemController::addAlias());
 $router->delete('/api/items/alias', fn () => ItemController::removeAlias());
+$router->post('/api/items/image', fn () => ItemController::uploadImage());
+$router->delete('/api/items/image', fn () => ItemController::removeImage());
+$router->get('/api/items/image/{fileName}', fn (array $params) => FileController::productImage($params));
 
 $router->get('/api/stores', fn () => StoreController::list());
 $router->put('/api/stores', fn () => StoreController::rename());

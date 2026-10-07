@@ -5,6 +5,7 @@ import { ArrowLeft, Download, Pencil, RefreshCw, Trash2, Check, X } from 'lucide
 import { apiFetch, apiJson, ApiError } from '../api';
 import { Invoice, InvoiceItem } from '../types';
 import { countryLabel, countryFlag } from '../countries';
+import { AuthImage } from '../components/AuthImage';
 
 function formatQuantity(quantity: number, unit?: string): string {
   if (unit === 'kg') {
@@ -252,15 +253,25 @@ export const InvoiceDetail = () => {
               {invoice.items.map((item, idx) => (
                 <div key={item.id ?? idx} className={`py-2 ${idx < invoice.items!.length - 1 ? 'border-bottom' : ''}`}>
                   <div className="d-flex align-items-start justify-content-between gap-2">
-                    <div style={{ minWidth: 0 }}>
-                      <div className="fw-semibold text-break">{item.productName}</div>
-                      <div className="text-muted small d-flex flex-wrap align-items-center gap-2 mt-1">
-                        <span>{formatQuantity(item.quantity, item.quantityUnit)}</span>
-                        <span>
-                          {item.unitPrice.toFixed(2)} €{item.quantityUnit === 'kg' ? '/kg' : ''}
-                        </span>
-                        {item.vatRate != null && <span>IVA {item.vatRate}%</span>}
-                        {renderCategory(item)}
+                    <div className="d-flex align-items-start gap-2" style={{ minWidth: 0 }}>
+                      {item.imagePath && (
+                        <AuthImage
+                          path={item.imagePath}
+                          alt={item.productName}
+                          className="rounded border flex-shrink-0"
+                          style={{ width: 36, height: 36, objectFit: 'cover' }}
+                        />
+                      )}
+                      <div style={{ minWidth: 0 }}>
+                        <div className="fw-semibold text-break">{item.productName}</div>
+                        <div className="text-muted small d-flex flex-wrap align-items-center gap-2 mt-1">
+                          <span>{formatQuantity(item.quantity, item.quantityUnit)}</span>
+                          <span>
+                            {item.unitPrice.toFixed(2)} €{item.quantityUnit === 'kg' ? '/kg' : ''}
+                          </span>
+                          {item.vatRate != null && <span>IVA {item.vatRate}%</span>}
+                          {renderCategory(item)}
+                        </div>
                       </div>
                     </div>
                     <div className="fw-bold flex-shrink-0">{item.totalPrice.toFixed(2)} €</div>

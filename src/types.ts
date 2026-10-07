@@ -14,6 +14,7 @@ export interface InvoiceItem {
   totalPrice: number;
   vatRate?: number | null;
   category?: string;
+  imagePath?: string | null;
 }
 
 // Forma devolvida por InvoiceRepository::mapRow() (backend/src/Repositories/InvoiceRepository.php)

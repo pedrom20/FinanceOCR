@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, Form, Button, Modal, Alert, Spinner, Badge } from 'react-bootstrap';
-import { Pencil, ChevronDown, ChevronRight, Loader2, TrendingUp, X, Plus } from 'lucide-react';
+import { Pencil, ChevronDown, ChevronRight, Loader2, TrendingUp, X, Plus, ImagePlus, Image as ImageIcon } from 'lucide-react';
 import { apiJson, apiFetch, ApiError } from '../api';
 import { PriceHistoryModal } from '../components/PriceHistoryModal';
+import { AuthImage } from '../components/AuthImage';
 
 interface ReportItem {
   invoiceId: string;
@@ -17,6 +18,7 @@ interface ReportItem {
   totalPrice: number;
   vatRate?: number | null;
   category?: string;
+  imagePath?: string | null;
 }
 
 type GroupBy = 'product' | 'store' | 'category';
@@ -27,6 +29,7 @@ interface Group {
   totalSpent: number;
   occurrences: ReportItem[];
   category?: string;
+  imagePath?: string | null;
 }
 
 function groupItems(items: ReportItem[], by: GroupBy): Group[] {
@@ -35,12 +38,20 @@ function groupItems(items: ReportItem[], by: GroupBy): Group[] {
     const key = by === 'product' ? item.productName : by === 'store' ? item.storeName : (item.category || '(sem categoria)');
     let g = map.get(key);
     if (!g) {
-      g = { key, count: 0, totalSpent: 0, occurrences: [], category: by === 'product' ? item.category : undefined };
+      g = {
+        key,
+        count: 0,
+        totalSpent: 0,
+        occurrences: [],
+        category: by === 'product' ? item.category : undefined,
+        imagePath: by === 'product' ? item.imagePath : undefined,
+      };
       map.set(key, g);
     }
     g.count += 1;
     g.totalSpent += item.totalPrice;
     g.occurrences.push(item);
+    if (by === 'product' && !g.imagePath && item.imagePath) g.imagePath = item.imagePath;
   }
   return Array.from(map.values()).sort((a, b) => b.totalSpent - a.totalSpent);
 }
@@ -67,6 +78,9 @@ export const Items = () => {
   const [aliasInput, setAliasInput] = useState('');
   const [aliasBusy, setAliasBusy] = useState(false);
   const [aliasError, setAliasError] = useState('');
+  const [editingImagePath, setEditingImagePath] = useState<string | null | undefined>(undefined);
+  const [imageBusy, setImageBusy] = useState(false);
+  const [imageError, setImageError] = useState('');
 
   const load = () => {
     setLoading(true);
@@ -100,7 +114,47 @@ export const Items = () => {
     setSaveError('');
     setAliasInput('');
     setAliasError('');
+    setEditingImagePath(g.imagePath);
+    setImageError('');
     loadAliases(g.key);
+  };
+
+  const uploadImage = async (file: File) => {
+    if (!editingGroup) return;
+    setImageBusy(true);
+    setImageError('');
+    try {
+      const formData = new FormData();
+      formData.append('productName', editingGroup.key);
+      formData.append('image', file);
+      const response = await apiFetch('/api/items/image', { method: 'POST', body: formData });
+      const data = await response.json();
+      setEditingImagePath(data.imagePath);
+      load();
+    } catch (err) {
+      setImageError(err instanceof ApiError ? err.message : 'Falha ao enviar imagem.');
+    } finally {
+      setImageBusy(false);
+    }
+  };
+
+  const removeImage = async () => {
+    if (!editingGroup) return;
+    setImageBusy(true);
+    setImageError('');
+    try {
+      await apiFetch('/api/items/image', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productName: editingGroup.key }),
+      });
+      setEditingImagePath(null);
+      load();
+    } catch (err) {
+      setImageError(err instanceof ApiError ? err.message : 'Falha ao remover imagem.');
+    } finally {
+      setImageBusy(false);
+    }
   };
 
   const loadAliases = (canonicalName: string) => {
@@ -205,6 +259,14 @@ export const Items = () => {
               <div className="d-flex align-items-center">
                 <button onClick={() => toggleExpanded(g.key)} className="btn d-flex align-items-center gap-3 p-3 text-start flex-grow-1 bg-transparent border-0">
                   {isOpen ? <ChevronDown size={16} className="text-muted flex-shrink-0" /> : <ChevronRight size={16} className="text-muted flex-shrink-0" />}
+                  {groupBy === 'product' && g.imagePath && (
+                    <AuthImage
+                      path={g.imagePath}
+                      alt={g.key}
+                      className="rounded border flex-shrink-0"
+                      style={{ width: 36, height: 36, objectFit: 'cover' }}
+                    />
+                  )}
                   <div className="min-w-0 flex-grow-1">
                     <div className="d-flex align-items-center gap-2">
                       <span className="fw-bold text-truncate">{g.key}</span>
@@ -304,6 +366,49 @@ export const Items = () => {
               </Button>
             </div>
             {aliasError && <Alert variant="danger" className="py-2 small mt-2 mb-0">{aliasError}</Alert>}
+          </Form.Group>
+
+          <Form.Group>
+            <Form.Label className="text-muted small text-uppercase fw-bold">Imagem</Form.Label>
+            <div className="d-flex align-items-center gap-3">
+              {editingImagePath ? (
+                <AuthImage
+                  path={editingImagePath}
+                  alt={editingGroup?.key ?? ''}
+                  className="rounded border"
+                  style={{ width: 64, height: 64, objectFit: 'cover' }}
+                />
+              ) : (
+                <div className="rounded border d-flex align-items-center justify-content-center text-muted bg-light flex-shrink-0" style={{ width: 64, height: 64 }}>
+                  <ImageIcon size={22} />
+                </div>
+              )}
+              <div className="d-flex flex-column gap-2">
+                <Form.Label
+                  className={`btn btn-outline-secondary btn-sm mb-0 d-inline-flex align-items-center gap-1 ${imageBusy ? 'disabled' : ''}`}
+                >
+                  {imageBusy ? <Loader2 className="spin" size={14} /> : <ImagePlus size={14} />}
+                  {editingImagePath ? 'Trocar' : 'Carregar'}
+                  <Form.Control
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="d-none"
+                    disabled={imageBusy}
+                    onChange={e => {
+                      const file = (e.target as HTMLInputElement).files?.[0];
+                      if (file) uploadImage(file);
+                      (e.target as HTMLInputElement).value = '';
+                    }}
+                  />
+                </Form.Label>
+                {editingImagePath && (
+                  <Button variant="link" size="sm" className="text-danger p-0" disabled={imageBusy} onClick={removeImage}>
+                    Remover
+                  </Button>
+                )}
+              </div>
+            </div>
+            {imageError && <Alert variant="danger" className="py-2 small mt-2 mb-0">{imageError}</Alert>}
           </Form.Group>
         </Modal.Body>
         <Modal.Footer>

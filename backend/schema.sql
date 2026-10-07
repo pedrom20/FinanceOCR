@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS invoice_items (
   total_price    DECIMAL(10,2) NOT NULL DEFAULT 0,
   vat_rate       DECIMAL(5,2) NULL,
   category       VARCHAR(100) NOT NULL DEFAULT '',
+  image_path     VARCHAR(255) NULL DEFAULT NULL,
   CONSTRAINT fk_items_invoice FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE,
   KEY idx_items_invoice (invoice_id),
   KEY idx_items_category (category)
