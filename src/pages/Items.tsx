@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, Form, Button, Modal, Alert, Spinner, Badge } from 'react-bootstrap';
-import { Pencil, ChevronDown, ChevronRight, Loader2, TrendingUp } from 'lucide-react';
+import { Pencil, ChevronDown, ChevronRight, Loader2, TrendingUp, X, Plus } from 'lucide-react';
 import { apiJson, apiFetch, ApiError } from '../api';
 import { PriceHistoryModal } from '../components/PriceHistoryModal';
 
@@ -63,6 +63,10 @@ export const Items = () => {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [historyGroup, setHistoryGroup] = useState<Group | null>(null);
+  const [aliases, setAliases] = useState<string[]>([]);
+  const [aliasInput, setAliasInput] = useState('');
+  const [aliasBusy, setAliasBusy] = useState(false);
+  const [aliasError, setAliasError] = useState('');
 
   const load = () => {
     setLoading(true);
@@ -94,6 +98,53 @@ export const Items = () => {
     setNameInput(g.key);
     setCategoryInput(g.category ?? '');
     setSaveError('');
+    setAliasInput('');
+    setAliasError('');
+    loadAliases(g.key);
+  };
+
+  const loadAliases = (canonicalName: string) => {
+    apiJson<{ aliases: string[] }>(`/api/items/aliases?productName=${encodeURIComponent(canonicalName)}`)
+      .then(data => setAliases(data.aliases))
+      .catch(() => setAliases([]));
+  };
+
+  const addAlias = async () => {
+    if (!editingGroup) return;
+    const alias = aliasInput.trim();
+    if (!alias) return;
+    setAliasBusy(true);
+    setAliasError('');
+    try {
+      await apiFetch('/api/items/alias', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ canonicalName: editingGroup.key, alias }),
+      });
+      setAliasInput('');
+      loadAliases(editingGroup.key);
+      load();
+    } catch (err) {
+      setAliasError(err instanceof ApiError ? err.message : 'Falha ao adicionar nome alternativo.');
+    } finally {
+      setAliasBusy(false);
+    }
+  };
+
+  const removeAlias = async (alias: string) => {
+    if (!editingGroup) return;
+    setAliasBusy(true);
+    setAliasError('');
+    try {
+      await apiFetch(`/api/items/alias?canonicalName=${encodeURIComponent(editingGroup.key)}&alias=${encodeURIComponent(alias)}`, {
+        method: 'DELETE',
+      });
+      loadAliases(editingGroup.key);
+    } catch (err) {
+      setAliasError(err instanceof ApiError ? err.message : 'Falha ao remover nome alternativo.');
+    } finally {
+      setAliasBusy(false);
+    }
   };
 
   const saveEdit = async () => {
@@ -221,6 +272,39 @@ export const Items = () => {
             </datalist>
           </Form.Group>
           {saveError && <Alert variant="danger" className="py-2 small mb-0">{saveError}</Alert>}
+
+          <Form.Group>
+            <Form.Label className="text-muted small text-uppercase fw-bold">
+              Nomes alternativos
+            </Form.Label>
+            <p className="text-muted mb-2" style={{ fontSize: '0.75rem' }}>
+              Útil para o mesmo artigo em idiomas diferentes (ex: "Agua" / "Água") — junta já as compras existentes com esse nome e aplica-se às faturas futuras.
+            </p>
+            {aliases.length > 0 && (
+              <div className="d-flex flex-wrap gap-2 mb-2">
+                {aliases.map(alias => (
+                  <Badge key={alias} bg="light" text="dark" className="border fw-normal d-inline-flex align-items-center gap-1 py-2 px-2">
+                    {alias}
+                    <X role="button" size={12} onClick={() => !aliasBusy && removeAlias(alias)} />
+                  </Badge>
+                ))}
+              </div>
+            )}
+            <div className="d-flex gap-2">
+              <Form.Control
+                size="sm"
+                placeholder="ex: Agua"
+                value={aliasInput}
+                onChange={e => setAliasInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addAlias())}
+              />
+              <Button variant="outline-secondary" size="sm" disabled={aliasBusy || !aliasInput.trim()} onClick={addAlias} className="flex-shrink-0 d-inline-flex align-items-center gap-1">
+                {aliasBusy ? <Loader2 className="spin" size={14} /> : <Plus size={14} />}
+                Adicionar
+              </Button>
+            </div>
+            {aliasError && <Alert variant="danger" className="py-2 small mt-2 mb-0">{aliasError}</Alert>}
+          </Form.Group>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="outline-secondary" disabled={saving} onClick={() => setEditingGroup(null)}>Cancelar</Button>

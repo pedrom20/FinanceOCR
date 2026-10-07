@@ -458,6 +458,25 @@ class InvoiceRepository
         return $stmt->fetchAll(\PDO::FETCH_KEY_PAIR);
     }
 
+    /** Nomes alternativos já associados a este artigo (ex: "Agua" como alias de "Água"), para a área de correspondência manual nos Artigos. */
+    public static function listAliasesForCanonical(int $userId, string $canonicalName): array
+    {
+        $stmt = Database::get()->prepare(
+            'SELECT raw_name FROM product_name_mappings WHERE user_id = ? AND canonical_name = ? ORDER BY raw_name'
+        );
+        $stmt->execute([$userId, $canonicalName]);
+        return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+    }
+
+    public static function removeProductNameMapping(int $userId, string $canonicalName, string $rawName): bool
+    {
+        $stmt = Database::get()->prepare(
+            'DELETE FROM product_name_mappings WHERE user_id = ? AND canonical_name = ? AND raw_name = ?'
+        );
+        $stmt->execute([$userId, $canonicalName, $rawName]);
+        return $stmt->rowCount() > 0;
+    }
+
     private static function itemsForInvoice(int $invoiceId): array
     {
         $stmt = Database::get()->prepare(

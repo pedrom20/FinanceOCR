@@ -36,6 +36,9 @@ $router->post('/api/invoices/{id}/reprocess', fn (array $params) => InvoiceContr
 
 $router->put('/api/items/rename', fn () => ItemController::rename());
 $router->put('/api/items/category', fn () => ItemController::recategorize());
+$router->get('/api/items/aliases', fn () => ItemController::listAliases());
+$router->put('/api/items/alias', fn () => ItemController::addAlias());
+$router->delete('/api/items/alias', fn () => ItemController::removeAlias());
 
 $router->get('/api/stores', fn () => StoreController::list());
 $router->put('/api/stores', fn () => StoreController::rename());

@@ -49,4 +49,62 @@ class ItemController
         $updated = InvoiceRepository::recategorizeProductGroup($userId, $productName, $category);
         Response::json(['updatedCount' => $updated]);
     }
+
+    public static function listAliases(): void
+    {
+        $payload = AuthMiddleware::authenticate();
+        $userId = (int) $payload['sub'];
+
+        $canonicalName = trim((string) ($_GET['productName'] ?? ''));
+        if ($canonicalName === '') {
+            Response::error('Artigo inválido', 400);
+            return;
+        }
+
+        Response::json(['aliases' => InvoiceRepository::listAliasesForCanonical($userId, $canonicalName)]);
+    }
+
+    /**
+     * Associa um nome alternativo (ex: "Agua", a mesma compra em espanhol) a
+     * um artigo já existente — mesmo que nenhuma fatura tenha ainda esse
+     * texto exato. Faz logo o merge retroativo (se já existir algum artigo
+     * com esse nome) e grava a correspondência para faturas futuras.
+     */
+    public static function addAlias(): void
+    {
+        $payload = AuthMiddleware::authenticate();
+        $userId = (int) $payload['sub'];
+
+        $body = json_decode((string) file_get_contents('php://input'), true);
+        $canonicalName = trim((string) ($body['canonicalName'] ?? ''));
+        $alias = trim((string) ($body['alias'] ?? ''));
+        if ($canonicalName === '' || $alias === '') {
+            Response::error('Dados inválidos', 400);
+            return;
+        }
+        if ($alias === $canonicalName) {
+            Response::error('O nome alternativo não pode ser igual ao nome do artigo', 400);
+            return;
+        }
+
+        InvoiceRepository::saveProductNameMapping($userId, $alias, $canonicalName);
+        $merged = InvoiceRepository::renameProductGroup($userId, $alias, $canonicalName);
+        Response::json(['mergedCount' => $merged]);
+    }
+
+    public static function removeAlias(): void
+    {
+        $payload = AuthMiddleware::authenticate();
+        $userId = (int) $payload['sub'];
+
+        $canonicalName = trim((string) ($_GET['canonicalName'] ?? ''));
+        $alias = trim((string) ($_GET['alias'] ?? ''));
+        if ($canonicalName === '' || $alias === '') {
+            Response::error('Dados inválidos', 400);
+            return;
+        }
+
+        $removed = InvoiceRepository::removeProductNameMapping($userId, $canonicalName, $alias);
+        Response::json(['removed' => $removed]);
+    }
 }
