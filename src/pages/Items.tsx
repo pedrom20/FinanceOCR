@@ -495,18 +495,17 @@ export const Items = () => {
               </div>
             )}
             <div className="d-flex gap-2">
-              <Form.Control
+              <Form.Select
                 size="sm"
-                list="items-similar-options"
-                placeholder="ex: Água 1,5L (Aldi)"
                 value={similarInput}
                 onChange={e => setSimilarInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addSimilarProduct())}
-              />
-              <datalist id="items-similar-options">
-                {allProductNames.filter(n => n !== editingGroup?.key).map(n => <option key={n} value={n} />)}
-              </datalist>
-              <Button variant="outline-secondary" size="sm" disabled={similarBusy || !similarInput.trim()} onClick={addSimilarProduct} className="flex-shrink-0 d-inline-flex align-items-center gap-1">
+              >
+                <option value="">Escolhe um artigo...</option>
+                {allProductNames
+                  .filter(n => n !== editingGroup?.key && !similarNames.includes(n))
+                  .map(n => <option key={n} value={n}>{n}</option>)}
+              </Form.Select>
+              <Button variant="outline-secondary" size="sm" disabled={similarBusy || !similarInput} onClick={addSimilarProduct} className="flex-shrink-0 d-inline-flex align-items-center gap-1">
                 {similarBusy ? <Loader2 className="spin" size={14} /> : <Plus size={14} />}
                 Ligar
               </Button>
