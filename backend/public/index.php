@@ -43,6 +43,9 @@ $router->delete('/api/items/alias', fn () => ItemController::removeAlias());
 $router->post('/api/items/image', fn () => ItemController::uploadImage());
 $router->delete('/api/items/image', fn () => ItemController::removeImage());
 $router->get('/api/items/image/{fileName}', fn (array $params) => FileController::productImage($params));
+$router->get('/api/items/similar', fn () => ItemController::listSimilar());
+$router->put('/api/items/similar', fn () => ItemController::addSimilar());
+$router->delete('/api/items/similar', fn () => ItemController::removeSimilar());
 
 $router->get('/api/stores', fn () => StoreController::list());
 $router->put('/api/stores', fn () => StoreController::rename());

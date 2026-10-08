@@ -80,3 +80,19 @@ CREATE TABLE IF NOT EXISTS ocr_training_examples (
   CONSTRAINT fk_training_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
   KEY idx_training_nif (store_nif)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Liga dois artigos DIFERENTES (ex: "Naturis 1,5L" do Lidl e a marca própria
+-- de 1,5L do Aldi) como comparáveis entre si — ao contrário de
+-- product_name_mappings, isto não funde os dois num só (continuam a ser
+-- comprados/contados em separado), só marca que valem a pena comparar.
+CREATE TABLE IF NOT EXISTS product_similar_links (
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id     INT UNSIGNED NOT NULL,
+  product_a   VARCHAR(255) NOT NULL,
+  product_b   VARCHAR(255) NOT NULL,
+  created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_similar_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE KEY uq_similar_pair (user_id, product_a, product_b),
+  KEY idx_similar_a (user_id, product_a),
+  KEY idx_similar_b (user_id, product_b)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

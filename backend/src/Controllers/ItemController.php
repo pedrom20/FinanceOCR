@@ -179,4 +179,56 @@ class ItemController
         InvoiceRepository::setProductImage($userId, $productName, null);
         Response::json(['removed' => true]);
     }
+
+    public static function listSimilar(): void
+    {
+        $payload = AuthMiddleware::authenticate();
+        $userId = (int) $payload['sub'];
+
+        $productName = trim((string) ($_GET['productName'] ?? ''));
+        if ($productName === '') {
+            Response::error('Artigo inválido', 400);
+            return;
+        }
+
+        Response::json(['similar' => InvoiceRepository::listSimilarProducts($userId, $productName)]);
+    }
+
+    /** Liga dois artigos diferentes como comparáveis (ex: marca própria de um supermercado vs. de outro) — não os funde. */
+    public static function addSimilar(): void
+    {
+        $payload = AuthMiddleware::authenticate();
+        $userId = (int) $payload['sub'];
+
+        $body = json_decode((string) file_get_contents('php://input'), true);
+        $productName = trim((string) ($body['productName'] ?? ''));
+        $similarName = trim((string) ($body['similarName'] ?? ''));
+        if ($productName === '' || $similarName === '') {
+            Response::error('Dados inválidos', 400);
+            return;
+        }
+        if ($productName === $similarName) {
+            Response::error('Um artigo não pode ser semelhante a si próprio', 400);
+            return;
+        }
+
+        InvoiceRepository::linkSimilarProducts($userId, $productName, $similarName);
+        Response::json(['linked' => true]);
+    }
+
+    public static function removeSimilar(): void
+    {
+        $payload = AuthMiddleware::authenticate();
+        $userId = (int) $payload['sub'];
+
+        $productName = trim((string) ($_GET['productName'] ?? ''));
+        $similarName = trim((string) ($_GET['similarName'] ?? ''));
+        if ($productName === '' || $similarName === '') {
+            Response::error('Dados inválidos', 400);
+            return;
+        }
+
+        $removed = InvoiceRepository::unlinkSimilarProducts($userId, $productName, $similarName);
+        Response::json(['removed' => $removed]);
+    }
 }

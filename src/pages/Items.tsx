@@ -81,6 +81,10 @@ export const Items = () => {
   const [editingImagePath, setEditingImagePath] = useState<string | null | undefined>(undefined);
   const [imageBusy, setImageBusy] = useState(false);
   const [imageError, setImageError] = useState('');
+  const [similarNames, setSimilarNames] = useState<string[]>([]);
+  const [similarInput, setSimilarInput] = useState('');
+  const [similarBusy, setSimilarBusy] = useState(false);
+  const [similarError, setSimilarError] = useState('');
 
   const load = () => {
     setLoading(true);
@@ -98,6 +102,12 @@ export const Items = () => {
   }, []);
 
   const groups = useMemo(() => groupItems(items, groupBy), [items, groupBy]);
+  // Agrupamento por artigo independente do modo de visualização atual — para
+  // conseguir mostrar o último preço/loja de um artigo semelhante ligado,
+  // mesmo quando o ecrã está agrupado por loja ou categoria.
+  const productGroups = useMemo(() => groupItems(items, 'product'), [items]);
+  const productGroupsByKey = useMemo(() => new Map(productGroups.map(g => [g.key, g])), [productGroups]);
+  const allProductNames = useMemo(() => productGroups.map(g => g.key).sort(), [productGroups]);
 
   const toggleExpanded = (key: string) => {
     setExpanded(prev => {
@@ -116,7 +126,53 @@ export const Items = () => {
     setAliasError('');
     setEditingImagePath(g.imagePath);
     setImageError('');
+    setSimilarInput('');
+    setSimilarError('');
     loadAliases(g.key);
+    loadSimilar(g.key);
+  };
+
+  const loadSimilar = (productName: string) => {
+    apiJson<{ similar: string[] }>(`/api/items/similar?productName=${encodeURIComponent(productName)}`)
+      .then(data => setSimilarNames(data.similar))
+      .catch(() => setSimilarNames([]));
+  };
+
+  const addSimilarProduct = async () => {
+    if (!editingGroup) return;
+    const similarName = similarInput.trim();
+    if (!similarName) return;
+    setSimilarBusy(true);
+    setSimilarError('');
+    try {
+      await apiFetch('/api/items/similar', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productName: editingGroup.key, similarName }),
+      });
+      setSimilarInput('');
+      loadSimilar(editingGroup.key);
+    } catch (err) {
+      setSimilarError(err instanceof ApiError ? err.message : 'Falha ao ligar artigo semelhante.');
+    } finally {
+      setSimilarBusy(false);
+    }
+  };
+
+  const removeSimilarProduct = async (similarName: string) => {
+    if (!editingGroup) return;
+    setSimilarBusy(true);
+    setSimilarError('');
+    try {
+      await apiFetch(`/api/items/similar?productName=${encodeURIComponent(editingGroup.key)}&similarName=${encodeURIComponent(similarName)}`, {
+        method: 'DELETE',
+      });
+      loadSimilar(editingGroup.key);
+    } catch (err) {
+      setSimilarError(err instanceof ApiError ? err.message : 'Falha ao remover artigo semelhante.');
+    } finally {
+      setSimilarBusy(false);
+    }
   };
 
   const uploadImage = async (file: File) => {
@@ -409,6 +465,53 @@ export const Items = () => {
               </div>
             </div>
             {imageError && <Alert variant="danger" className="py-2 small mt-2 mb-0">{imageError}</Alert>}
+          </Form.Group>
+
+          <Form.Group>
+            <Form.Label className="text-muted small text-uppercase fw-bold">Artigos semelhantes</Form.Label>
+            <p className="text-muted mb-2" style={{ fontSize: '0.75rem' }}>
+              Para comparar marcas próprias diferentes (ex: a água de marca do Lidl vs. a do Aldi) — ao contrário dos
+              nomes alternativos, isto não junta as compras, só liga os dois artigos para comparares o preço.
+            </p>
+            {similarNames.length > 0 && (
+              <div className="d-flex flex-column gap-2 mb-2">
+                {similarNames.map(name => {
+                  const info = productGroupsByKey.get(name);
+                  const lastOccurrence = info?.occurrences[0];
+                  return (
+                    <div key={name} className="d-flex align-items-center justify-content-between gap-2 border rounded-3 px-3 py-2">
+                      <div className="min-w-0">
+                        <div className="fw-semibold small text-truncate">{name}</div>
+                        {lastOccurrence && (
+                          <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                            {lastOccurrence.unitPrice.toFixed(2)} € · {lastOccurrence.storeName}
+                          </div>
+                        )}
+                      </div>
+                      <X role="button" size={14} className="text-muted flex-shrink-0" onClick={() => !similarBusy && removeSimilarProduct(name)} />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <div className="d-flex gap-2">
+              <Form.Control
+                size="sm"
+                list="items-similar-options"
+                placeholder="ex: Água 1,5L (Aldi)"
+                value={similarInput}
+                onChange={e => setSimilarInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addSimilarProduct())}
+              />
+              <datalist id="items-similar-options">
+                {allProductNames.filter(n => n !== editingGroup?.key).map(n => <option key={n} value={n} />)}
+              </datalist>
+              <Button variant="outline-secondary" size="sm" disabled={similarBusy || !similarInput.trim()} onClick={addSimilarProduct} className="flex-shrink-0 d-inline-flex align-items-center gap-1">
+                {similarBusy ? <Loader2 className="spin" size={14} /> : <Plus size={14} />}
+                Ligar
+              </Button>
+            </div>
+            {similarError && <Alert variant="danger" className="py-2 small mt-2 mb-0">{similarError}</Alert>}
           </Form.Group>
         </Modal.Body>
         <Modal.Footer>

@@ -491,6 +491,53 @@ class InvoiceRepository
         return $stmt->rowCount() > 0;
     }
 
+    /**
+     * Liga dois artigos DIFERENTES como "semelhantes/comparáveis" (ex: marca
+     * própria de um supermercado vs. de outro) — ao contrário de
+     * saveProductNameMapping(), não funde nada, só regista a relação. Guarda
+     * sempre por ordem alfabética para o par não poder ficar duplicado ao
+     * contrário (A,B) e (B,A).
+     */
+    public static function linkSimilarProducts(int $userId, string $productA, string $productB): void
+    {
+        [$a, $b] = [$productA, $productB];
+        if (strcmp($a, $b) > 0) {
+            [$a, $b] = [$b, $a];
+        }
+        $stmt = Database::get()->prepare(
+            'INSERT IGNORE INTO product_similar_links (user_id, product_a, product_b) VALUES (?, ?, ?)'
+        );
+        $stmt->execute([$userId, $a, $b]);
+    }
+
+    public static function unlinkSimilarProducts(int $userId, string $productA, string $productB): bool
+    {
+        [$a, $b] = [$productA, $productB];
+        if (strcmp($a, $b) > 0) {
+            [$a, $b] = [$b, $a];
+        }
+        $stmt = Database::get()->prepare(
+            'DELETE FROM product_similar_links WHERE user_id = ? AND product_a = ? AND product_b = ?'
+        );
+        $stmt->execute([$userId, $a, $b]);
+        return $stmt->rowCount() > 0;
+    }
+
+    /** @return string[] Nomes dos artigos ligados como semelhantes a este (a relação é simétrica, por isso procura dos dois lados). */
+    public static function listSimilarProducts(int $userId, string $productName): array
+    {
+        $stmt = Database::get()->prepare(
+            'SELECT product_a, product_b FROM product_similar_links
+             WHERE user_id = ? AND (product_a = ? OR product_b = ?)'
+        );
+        $stmt->execute([$userId, $productName, $productName]);
+        $others = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $others[] = $row['product_a'] === $productName ? $row['product_b'] : $row['product_a'];
+        }
+        return $others;
+    }
+
     private static function itemsForInvoice(int $invoiceId): array
     {
         $stmt = Database::get()->prepare(
