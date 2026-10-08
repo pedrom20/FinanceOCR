@@ -13,6 +13,7 @@ import { Stores } from './src/pages/Stores';
 import { Items } from './src/pages/Items';
 import { AdminSettings } from './src/pages/AdminSettings';
 import { Users } from './src/pages/Users';
+import { AdminTraining } from './src/pages/AdminTraining';
 
 const AppShell = () => {
   const { user, loading, logout } = useAuth();
@@ -41,6 +42,7 @@ const AppShell = () => {
           <Route path="/items" element={<Items />} />
           <Route path="/settings" element={user.role === 'admin' ? <AdminSettings /> : <Navigate to="/" />} />
           <Route path="/users" element={user.role === 'admin' ? <Users /> : <Navigate to="/" />} />
+          <Route path="/training" element={user.role === 'admin' ? <AdminTraining /> : <Navigate to="/" />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>

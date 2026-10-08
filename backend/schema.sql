@@ -63,3 +63,20 @@ CREATE TABLE IF NOT EXISTS product_name_mappings (
   CONSTRAINT fk_mapping_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   UNIQUE KEY uq_mapping_user_raw (user_id, raw_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Exemplos corrigidos à mão por um admin (área de "treino do OCR"): não há
+-- modelo local a re-treinar (tesseract regex + API de visão externa), por
+-- isso isto funciona como contexto few-shot — quando aparece um NIF já
+-- conhecido aqui, o exemplo corrigido é incluído no prompt da IA como
+-- referência do formato esperado para esse comerciante.
+CREATE TABLE IF NOT EXISTS ocr_training_examples (
+  id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  store_nif       VARCHAR(20) NOT NULL,
+  store_name      VARCHAR(255) NOT NULL,
+  corrected_json  TEXT NOT NULL,
+  file_name       VARCHAR(255) NULL,
+  created_by      INT UNSIGNED NOT NULL,
+  created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_training_user FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+  KEY idx_training_nif (store_nif)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

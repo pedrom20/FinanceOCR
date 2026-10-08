@@ -75,7 +75,7 @@ PROMPT;
     /** @return string[] Tipos MIME de imagem que a API de visão deste fornecedor aceita. */
     abstract public static function supportedMediaTypes(): array;
 
-    public function extractInvoice(string $imagePath, string $mediaType): ?array
+    public function extractInvoice(string $imagePath, string $mediaType, ?string $hintText = null): ?array
     {
         if (!in_array($mediaType, static::supportedMediaTypes(), true)) {
             return null;
@@ -84,7 +84,15 @@ PROMPT;
         if ($imageData === false) {
             return null;
         }
-        $text = $this->callVision(static::PROMPT, base64_encode($imageData), $mediaType);
+        $prompt = static::PROMPT;
+        if ($hintText !== null) {
+            // Não há modelo local a re-treinar — isto é o mecanismo de
+            // "treino" da área de admin: um exemplo corrigido à mão para
+            // este mesmo comerciante (por NIF) entra como referência
+            // few-shot em vez de fine-tuning real.
+            $prompt .= "\n\nExemplo corrigido manualmente para este comerciante, usa como referência do formato e dos nomes de artigos esperados:\n" . $hintText;
+        }
+        $text = $this->callVision($prompt, base64_encode($imageData), $mediaType);
         return $this->parseInvoiceJson($text);
     }
 

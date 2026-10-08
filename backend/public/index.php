@@ -3,6 +3,7 @@
 require __DIR__ . '/../vendor/autoload.php';
 
 use FinanceOcr\Router;
+use FinanceOcr\Controllers\AdminTrainingController;
 use FinanceOcr\Controllers\AuthController;
 use FinanceOcr\Controllers\FileController;
 use FinanceOcr\Controllers\HealthController;
@@ -60,5 +61,10 @@ $router->post('/api/settings/test', fn () => SettingsController::test());
 $router->get('/api/users', fn () => UserController::list());
 $router->put('/api/users/{id}/role', fn (array $params) => UserController::updateRole($params));
 $router->delete('/api/users/{id}', fn (array $params) => UserController::destroy($params));
+
+$router->post('/api/admin/training/process', fn () => AdminTrainingController::process());
+$router->post('/api/admin/training-examples', fn () => AdminTrainingController::store());
+$router->get('/api/admin/training-examples', fn () => AdminTrainingController::list());
+$router->delete('/api/admin/training-examples/{id}', fn (array $params) => AdminTrainingController::destroy($params));
 
 $router->dispatch($_SERVER['REQUEST_METHOD'], $_SERVER['REQUEST_URI']);

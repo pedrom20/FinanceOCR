@@ -5,6 +5,7 @@ namespace FinanceOcr\Controllers;
 use FinanceOcr\Auth\AuthMiddleware;
 use FinanceOcr\Config;
 use FinanceOcr\Repositories\InvoiceRepository;
+use FinanceOcr\Repositories\TrainingExampleRepository;
 use FinanceOcr\Services\Ai\AiProviderFactory;
 use FinanceOcr\Services\InvoiceParser;
 use FinanceOcr\Services\OcrService;
@@ -119,7 +120,16 @@ class OcrController
             if ($lowConfidence) {
                 try {
                     $aiMediaType = $mime === 'application/pdf' ? 'image/png' : $mime;
-                    $aiResult = $provider?->extractInvoice($ocrImagePath, $aiMediaType);
+                    // Se um admin já corrigiu à mão uma fatura deste mesmo
+                    // comerciante (área de treino do OCR), esse exemplo entra
+                    // como referência few-shot — não há modelo local a
+                    // re-treinar, isto é o mecanismo real de "aprender" com
+                    // correções. Procura por nome também: num recibo
+                    // estrangeiro o parser local raramente encontra o NIF
+                    // (só conhece o rótulo "NIF" português), mas costuma
+                    // apanhar o nome da loja no cabeçalho.
+                    $hintText = TrainingExampleRepository::findByNifOrName($extracted['storeNif'], $extracted['storeName']);
+                    $aiResult = $provider?->extractInvoice($ocrImagePath, $aiMediaType, $hintText);
                     if ($aiResult !== null) {
                         error_log("Fallback IA (" . get_class($provider) . ") usado para utilizador {$userId} (parse local insuficiente)");
                         if ($aiResult['storeName'] !== '') {

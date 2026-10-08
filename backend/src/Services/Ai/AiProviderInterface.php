@@ -19,10 +19,13 @@ interface AiProviderInterface
      * Extrai os dados de uma fatura a partir da imagem do recibo. Usado como
      * fallback quando o parser local (regex) não confia no resultado.
      *
+     * @param string|null $hintText Exemplo corrigido manualmente por um admin
+     *        para este mesmo comerciante (área de treino do OCR), incluído no
+     *        prompt como referência few-shot quando disponível.
      * @return array{storeName:string,storeNif:string,invoiceDate:string,totalAmount:float,paymentMethod:string,items:array}|null
      *         null se a imagem não for suportada por este fornecedor.
      */
-    public function extractInvoice(string $imagePath, string $mediaType): ?array;
+    public function extractInvoice(string $imagePath, string $mediaType, ?string $hintText = null): ?array;
 
     /**
      * Sugere uma categoria por artigo (chamada de texto, sem imagem).

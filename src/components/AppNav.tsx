@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Navbar, Nav, NavDropdown, Container, Badge } from 'react-bootstrap';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, UploadCloud, FileText, PieChart, Store, Package, Settings, Users, LogOut, Receipt } from 'lucide-react';
+import { LayoutDashboard, UploadCloud, FileText, PieChart, Store, Package, Settings, Users, LogOut, Receipt, GraduationCap } from 'lucide-react';
 import { User } from '../types';
 
 export const NAV_ITEMS = [
@@ -52,6 +52,9 @@ export const AppNav = ({ user, onLogout }: { user: User; onLogout: () => void })
                 </Nav.Link>
                 <Nav.Link as={NavLink} to="/users" onClick={close}>
                   <Users size={16} className="me-1" /> <span className="d-lg-none">Utilizadores</span>
+                </Nav.Link>
+                <Nav.Link as={NavLink} to="/training" onClick={close}>
+                  <GraduationCap size={16} className="me-1" /> <span className="d-lg-none">Treino do OCR</span>
                 </Nav.Link>
                 <span className="nav-separator d-none d-lg-block" />
               </>
