@@ -208,6 +208,44 @@ class InvoiceRepository
         return $stmt->rowCount() > 0;
     }
 
+    /**
+     * Atualização parcial de um artigo (quantidade, unidade, preço unitário,
+     * total e/ou categoria) — só ESTA ocorrência nesta fatura, ao contrário
+     * de recategorizeProductGroup()/renameProductGroup() que corrigem todas
+     * as compras com o mesmo nome. Para corrigir um erro pontual da OCR
+     * (ex: quantidade mal lida só numa compra) sem mexer no resto.
+     *
+     * @param array<string,mixed> $fields Colunas já validadas/convertidas pelo controller (nomes de coluna reais, não camelCase).
+     */
+    public static function updateItem(int $userId, int $invoiceId, int $itemId, array $fields): bool
+    {
+        $allowed = ['category', 'quantity', 'quantity_unit', 'unit_price', 'total_price'];
+        $sets = [];
+        $params = [];
+        foreach ($fields as $column => $value) {
+            if (!in_array($column, $allowed, true)) {
+                continue;
+            }
+            $sets[] = "ii.$column = ?";
+            $params[] = $value;
+        }
+        if (empty($sets)) {
+            return false;
+        }
+
+        $params[] = $itemId;
+        $params[] = $invoiceId;
+        $params[] = $userId;
+        $stmt = Database::get()->prepare(
+            'UPDATE invoice_items ii
+             JOIN invoices i ON i.id = ii.invoice_id
+             SET ' . implode(', ', $sets) . '
+             WHERE ii.id = ? AND ii.invoice_id = ? AND i.user_id = ?'
+        );
+        $stmt->execute($params);
+        return $stmt->rowCount() > 0;
+    }
+
     /** true se a fatura existia e pertencia a este utilizador (e foi apagada). Os artigos vão com ela (ON DELETE CASCADE). */
     public static function deleteForUser(int $userId, int $invoiceId): bool
     {

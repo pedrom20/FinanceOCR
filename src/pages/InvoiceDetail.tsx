@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Card, Table, Button, Badge, Form, Modal, Alert } from 'react-bootstrap';
-import { ArrowLeft, Download, Pencil, RefreshCw, Trash2, Check, X } from 'lucide-react';
+import { Card, Table, Button, Badge, Form, Modal, Alert, Row, Col } from 'react-bootstrap';
+import { ArrowLeft, Download, Pencil, RefreshCw, Trash2, Check, X, Loader2 } from 'lucide-react';
 import { apiFetch, apiJson, ApiError } from '../api';
 import { Invoice, InvoiceItem } from '../types';
 import { countryLabel, countryFlag } from '../countries';
@@ -49,6 +49,12 @@ export const InvoiceDetail = () => {
   const [showReprocessModal, setShowReprocessModal] = useState(false);
   const [reprocessing, setReprocessing] = useState(false);
   const [reprocessError, setReprocessError] = useState('');
+  const [editingQtyItem, setEditingQtyItem] = useState<InvoiceItem | null>(null);
+  const [qtyInput, setQtyInput] = useState('');
+  const [qtyUnitInput, setQtyUnitInput] = useState('un');
+  const [unitPriceInput, setUnitPriceInput] = useState('');
+  const [savingQty, setSavingQty] = useState(false);
+  const [qtyError, setQtyError] = useState('');
 
   useEffect(() => {
     apiJson<Invoice>(`/api/invoices/${id}`)
@@ -140,6 +146,45 @@ export const InvoiceDetail = () => {
     );
   };
 
+  const startEditingQty = (item: InvoiceItem) => {
+    setEditingQtyItem(item);
+    setQtyInput(String(item.quantity));
+    setQtyUnitInput(item.quantityUnit === 'kg' ? 'kg' : 'un');
+    setUnitPriceInput(String(item.unitPrice));
+    setQtyError('');
+  };
+
+  const saveQty = async () => {
+    if (!invoice || !editingQtyItem?.id) return;
+    const quantity = parseFloat(qtyInput);
+    const unitPrice = parseFloat(unitPriceInput);
+    if (!Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(unitPrice) || unitPrice < 0) {
+      setQtyError('Quantidade e preço têm de ser números válidos.');
+      return;
+    }
+    const totalPrice = Math.round(quantity * unitPrice * 100) / 100;
+    setSavingQty(true);
+    setQtyError('');
+    try {
+      await apiFetch(`/api/invoices/${invoice.id}/items/${editingQtyItem.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity, quantityUnit: qtyUnitInput, unitPrice, totalPrice }),
+      });
+      setInvoice({
+        ...invoice,
+        items: invoice.items?.map(it =>
+          it.id === editingQtyItem.id ? { ...it, quantity, quantityUnit: qtyUnitInput, unitPrice, totalPrice } : it
+        ),
+      });
+      setEditingQtyItem(null);
+    } catch (err) {
+      setQtyError(err instanceof ApiError ? err.message : 'Falha ao guardar.');
+    } finally {
+      setSavingQty(false);
+    }
+  };
+
   const reprocessInvoice = async () => {
     if (!invoice) return;
     setReprocessing(true);
@@ -210,6 +255,58 @@ export const InvoiceDetail = () => {
         </Modal.Footer>
       </Modal>
 
+      <Modal show={!!editingQtyItem} onHide={() => !savingQty && setEditingQtyItem(null)}>
+        <Modal.Header closeButton>
+          <Modal.Title className="h6 mb-0">Corrigir quantidade e preço</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="d-flex flex-column gap-3">
+          <p className="text-muted small mb-0">
+            Corrige só esta compra de "{editingQtyItem?.productName}" — não afeta outras faturas com o mesmo artigo.
+          </p>
+          <Row className="g-2">
+            <Col xs={7}>
+              <Form.Group>
+                <Form.Label className="text-muted small text-uppercase fw-bold">Quantidade</Form.Label>
+                <Form.Control type="number" step="0.001" min="0" value={qtyInput} onChange={e => setQtyInput(e.target.value)} />
+              </Form.Group>
+            </Col>
+            <Col xs={5}>
+              <Form.Group>
+                <Form.Label className="text-muted small text-uppercase fw-bold">Unidade</Form.Label>
+                <Form.Select value={qtyUnitInput} onChange={e => setQtyUnitInput(e.target.value)}>
+                  <option value="un">un</option>
+                  <option value="kg">kg</option>
+                </Form.Select>
+              </Form.Group>
+            </Col>
+          </Row>
+          <Form.Group>
+            <Form.Label className="text-muted small text-uppercase fw-bold">
+              Preço Unitário {qtyUnitInput === 'kg' ? '(€/kg)' : '(€)'}
+            </Form.Label>
+            <Form.Control type="number" step="0.01" min="0" value={unitPriceInput} onChange={e => setUnitPriceInput(e.target.value)} />
+          </Form.Group>
+          <div className="d-flex justify-content-between align-items-center bg-light rounded-3 px-3 py-2">
+            <span className="text-muted small text-uppercase fw-bold">Total</span>
+            <span className="fw-bold">
+              {(() => {
+                const q = parseFloat(qtyInput);
+                const p = parseFloat(unitPriceInput);
+                return Number.isFinite(q) && Number.isFinite(p) ? (q * p).toFixed(2) : '—';
+              })()} €
+            </span>
+          </div>
+          {qtyError && <Alert variant="danger" className="py-2 small mb-0">{qtyError}</Alert>}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="outline-secondary" disabled={savingQty} onClick={() => setEditingQtyItem(null)}>Cancelar</Button>
+          <Button variant="primary" disabled={savingQty} onClick={saveQty} className="d-inline-flex align-items-center gap-2">
+            {savingQty && <Loader2 className="spin" size={16} />}
+            {savingQty ? 'A guardar...' : 'Guardar'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
       <Card>
         <Card.Header className="bg-light d-flex flex-wrap justify-content-between align-items-start gap-3">
           {/* min-width:0 é necessário para o nome da loja poder encolher/
@@ -265,9 +362,12 @@ export const InvoiceDetail = () => {
                       <div style={{ minWidth: 0 }}>
                         <div className="fw-semibold text-break">{item.productName}</div>
                         <div className="text-muted small d-flex flex-wrap align-items-center gap-2 mt-1">
-                          <span>{formatQuantity(item.quantity, item.quantityUnit)}</span>
-                          <span>
-                            {item.unitPrice.toFixed(2)} €{item.quantityUnit === 'kg' ? '/kg' : ''}
+                          <span className="d-inline-flex align-items-center gap-1">
+                            {formatQuantity(item.quantity, item.quantityUnit)} × {item.unitPrice.toFixed(2)} €
+                            {item.quantityUnit === 'kg' ? '/kg' : ''}
+                            {item.id && (
+                              <Pencil role="button" size={10} className="text-muted" onClick={() => startEditingQty(item)} />
+                            )}
                           </span>
                           {item.vatRate != null && <span>IVA {item.vatRate}%</span>}
                           {renderCategory(item)}

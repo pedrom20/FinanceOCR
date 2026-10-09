@@ -85,14 +85,42 @@ class InvoiceController
         $userId = (int) $payload['sub'];
 
         $body = json_decode((string) file_get_contents('php://input'), true);
-        $category = trim((string) ($body['category'] ?? ''));
+        if (!is_array($body)) {
+            Response::error('Corpo do pedido inválido', 400);
+            return;
+        }
 
-        $updated = InvoiceRepository::updateItemCategory($userId, (int) $params['invoiceId'], (int) $params['itemId'], $category);
+        // Atualização parcial de UM artigo desta fatura — ao contrário do
+        // "Artigos" (Items.tsx), que corrige todas as ocorrências de um nome
+        // em todas as faturas, isto é para um erro pontual (ex: quantidade
+        // mal lida pela OCR só nesta compra), sem afetar o resto.
+        $fields = [];
+        if (array_key_exists('category', $body)) {
+            $fields['category'] = trim((string) $body['category']);
+        }
+        if (array_key_exists('quantity', $body)) {
+            $fields['quantity'] = (float) $body['quantity'];
+        }
+        if (array_key_exists('quantityUnit', $body)) {
+            $fields['quantity_unit'] = (string) $body['quantityUnit'] === 'kg' ? 'kg' : 'un';
+        }
+        if (array_key_exists('unitPrice', $body)) {
+            $fields['unit_price'] = (float) $body['unitPrice'];
+        }
+        if (array_key_exists('totalPrice', $body)) {
+            $fields['total_price'] = (float) $body['totalPrice'];
+        }
+        if (empty($fields)) {
+            Response::error('Nada para atualizar', 400);
+            return;
+        }
+
+        $updated = InvoiceRepository::updateItem($userId, (int) $params['invoiceId'], (int) $params['itemId'], $fields);
         if (!$updated) {
             Response::error('Artigo não encontrado', 404);
             return;
         }
-        Response::json(['category' => $category]);
+        Response::json(['updated' => true]);
     }
 
     /**
